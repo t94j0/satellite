@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"net"
 	"os/exec"
 	"strings"
@@ -81,15 +80,18 @@ func getHost(inp string) net.IP {
 }
 
 func (f *Path) ShouldRemove() bool {
+	if f.Serve == 0 {
+		return false
+	}
 	return f.timesServed >= f.Serve
 }
 
 // ShouldHost does the checking to see if the requested file should be given to a target
 // TODO: Make this function less ass
-func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
+func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error) {
 	// Don't serve if it's been served too many times
 	if f.ShouldRemove() {
-		return false
+		return false, nil
 	}
 
 	// Agent
@@ -111,7 +113,7 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
 		for _, r := range f.AuthorizedIPRange {
 			tmpRange, err := iprange.ParseIPRange(r)
 			if err != nil {
-				log.Println(err)
+				return false, err
 			}
 			if tmpRange.Contains(targetHost) {
 				correctRange = true
@@ -121,15 +123,15 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
 		correctRange = true
 	}
 
-	inBadRange := false
+	// Blacklist IP range
 	if len(f.BlacklistIPRange) != 0 {
 		for _, r := range f.BlacklistIPRange {
 			tmpRange, err := iprange.ParseIPRange(r)
 			if err != nil {
-				log.Println(err)
+				return false, err
 			}
 			if tmpRange.Contains(targetHost) {
-				inBadRange = true
+				return false, nil
 			}
 		}
 	}
@@ -178,11 +180,15 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
 
 	// Exec
 	correctExec := false
-	out, err := exec.Command(f.Exec.ScriptPath).Output()
-	if err != nil {
-		log.Println(err)
-	}
-	if f.Exec.Output == strings.TrimSuffix(string(out), "\n") {
+	if f.Exec.ScriptPath != "" {
+		out, err := exec.Command(f.Exec.ScriptPath).Output()
+		if err != nil {
+			return false, err
+		}
+		if f.Exec.Output == strings.TrimSuffix(string(out), "\n") {
+			correctExec = true
+		}
+	} else {
 		correctExec = true
 	}
 
@@ -192,11 +198,12 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
 		filledPrereq = identifier.Match(targetHost, f.PrereqIDs)
 	}
 
-	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && !inBadRange && correctExec
+	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && correctExec
 
 	if didSucceed {
 		f.timesServed += 1
 		identifier.Hit(targetHost, f.ID)
 	}
-	return didSucceed
+
+	return didSucceed, nil
 }

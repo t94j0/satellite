@@ -68,7 +68,13 @@ func (s Server) handler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	s.writeHeaders(w, path.AddHeaders)
-	if path.ShouldHost(req, s.identifier) {
+
+	isHost, err := path.ShouldHost(req, s.identifier)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if isHost {
 		s.matchHandler(w, req, path)
 	} else {
 		s.noMatchHandler(w, req, path)
