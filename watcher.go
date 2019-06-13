@@ -6,7 +6,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func createWatcher(path string, f func() error) {
+func createWatcher(path string, f func() error) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -14,6 +14,7 @@ func createWatcher(path string, f func() error) {
 	defer watcher.Close()
 
 	done := make(chan bool)
+
 	go func() {
 		for {
 			select {
@@ -24,22 +25,25 @@ func createWatcher(path string, f func() error) {
 				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Remove == fsnotify.Remove {
 					log.Println("Reloading.", event.Op, event.Name)
 					if err := f(); err != nil {
-						log.Println("Error:", err)
+						log.Println("Error: ", err)
+					} else {
+						log.Println("Successful reload")
 					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Println("Error: ", err)
 			}
 		}
 	}()
 
 	err = watcher.Add(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	<-done
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os/exec"
 	"strings"
 
 	"github.com/apcera/util/iprange"
@@ -13,17 +14,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Path is an available path that can be accessed on the server
 type Path struct {
 	// FullPath is the path of the file to host
 	FullPath string
+	// ID of path
+	ID uint
 	// AddHeaders are a dict of headers to add to every request
 	AddHeaders map[string]string `yaml:"add_headers"`
 	// AddHeadersSuccess are a dict of headers to add to every successful request
 	AddHeadersSuccess map[string]string `yaml:"add_headers_success"`
 	// AddHeadersFailure are a dict of headers to add to every hit, but failed header
 	AddHeadersFailure map[string]string `yaml:"add_headers_failure"`
-	// AddHeadersNotExist are a dict of headers to add to every 404
-	AddHeadersNotExist map[string]string `yaml:"add_headers_not_exist"`
 	// AUserAgent is the authorized user agents for a file
 	AuthorizedUserAgents []string `yaml:"authorized_useragents"`
 	// AuthorizedIPRange is the authorized range of IPs who are allowed to access a file
@@ -34,31 +36,63 @@ type Path struct {
 	AuthorizedHeaders map[string]string `yaml:"authorized_headers"`
 	// AuthorizedJA3 are valid JA3 hashes
 	AuthorizedJA3 []string `yaml:"authorized_ja3"`
-	// Once files will only be served once before they are no longer able to be accessed
-	Once bool `yaml:"once"`
+	// BlacklistIPRange are blacklisted IPs
+	BlacklistIPRange []string `yaml:"blacklist_iprange"`
+	// Serve is the number of times the file should be served
+	Serve uint `yaml:"serve"`
+	// timesServed is the number of times served so far
+	timesServed uint
+	// Download tells browser the file should be downloaded instead of rendered. Overwrites ContentType
+	Download bool `yaml:"download"`
+	// ContentType tells the browser what content should be parsed. A list of MIME
+	// types can be found here: https://www.freeformatter.com/mime-types-list.html
+	ContentType string `yaml:"content_type"`
+	// IDs of hits that need to happen before the current one will succeed
+	PrereqIDs []uint `yaml:"prereq"`
+	Exec      struct {
+		ScriptPath string `yaml:"script"`
+		Output     string `yaml:"output"`
+	} `yaml:"exec"`
 }
 
-func NewPath(path string) (Path, error) {
+// NewPath parses a .info file in the base path directory
+func NewPath(path string) (*Path, error) {
 	var infoPath Path
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return infoPath, err
+		return &infoPath, err
 	}
 
 	if err := yaml.Unmarshal(data, &infoPath); err != nil {
-		return infoPath, err
+		return &infoPath, err
 	}
 
-	return infoPath, nil
+	return &infoPath, nil
 }
 
 func getHost(inp string) net.IP {
-	host := strings.Split(inp, ":")[0]
-	return net.ParseIP(host)
+	split := strings.Split(inp, ":")
+	filter := split[:len(split)-1]
+	full := strings.Join(filter, ":")
+	trimmedr := strings.TrimRight(full, "]")
+	trimmed := strings.TrimLeft(trimmedr, "[")
+	return net.ParseIP(trimmed)
 }
 
-func (f Path) ShouldHost(req *http.Request) bool {
+func (f *Path) ShouldRemove() bool {
+	return f.timesServed >= f.Serve
+}
+
+// ShouldHost does the checking to see if the requested file should be given to a target
+// TODO: Make this function less ass
+func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) bool {
+	// Don't serve if it's been served too many times
+	if f.ShouldRemove() {
+		return false
+	}
+
+	// Agent
 	correctAgent := false
 	if len(f.AuthorizedUserAgents) != 0 {
 		for _, u := range f.AuthorizedUserAgents {
@@ -70,14 +104,14 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctAgent = true
 	}
 
+	// IP Range
 	targetHost := getHost(req.RemoteAddr)
 	correctRange := false
 	if len(f.AuthorizedIPRange) != 0 {
 		for _, r := range f.AuthorizedIPRange {
 			tmpRange, err := iprange.ParseIPRange(r)
-			// TODO: Validate IP ranges earlier
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
 			}
 			if tmpRange.Contains(targetHost) {
 				correctRange = true
@@ -87,6 +121,20 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctRange = true
 	}
 
+	inBadRange := false
+	if len(f.BlacklistIPRange) != 0 {
+		for _, r := range f.BlacklistIPRange {
+			tmpRange, err := iprange.ParseIPRange(r)
+			if err != nil {
+				log.Println(err)
+			}
+			if tmpRange.Contains(targetHost) {
+				inBadRange = true
+			}
+		}
+	}
+
+	// Method
 	correctMethods := false
 	if len(f.AuthorizedMethods) != 0 {
 		for _, m := range f.AuthorizedMethods {
@@ -98,6 +146,7 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctMethods = true
 	}
 
+	// Headers
 	correctHeaders := false
 	if len(f.AuthorizedHeaders) != 0 {
 		for k, v := range f.AuthorizedHeaders {
@@ -109,12 +158,11 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctHeaders = true
 	}
 
-	// Check JA3
+	// JA3
 	hash := md5.Sum([]byte(req.JA3Fingerprint))
 	out := make([]byte, 32)
 	hex.Encode(out, hash[:])
 	ja3 := string(out)
-	log.Println("JA3:", ja3)
 
 	correctJA3 := false
 
@@ -128,5 +176,27 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctJA3 = true
 	}
 
-	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3
+	// Exec
+	correctExec := false
+	out, err := exec.Command(f.Exec.ScriptPath).Output()
+	if err != nil {
+		log.Println(err)
+	}
+	if f.Exec.Output == strings.TrimSuffix(string(out), "\n") {
+		correctExec = true
+	}
+
+	// Prereq
+	filledPrereq := true
+	if len(f.PrereqIDs) != 0 {
+		filledPrereq = identifier.Match(targetHost, f.PrereqIDs)
+	}
+
+	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && !inBadRange && correctExec
+
+	if didSucceed {
+		f.timesServed += 1
+		identifier.Hit(targetHost, f.ID)
+	}
+	return didSucceed
 }

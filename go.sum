@@ -97,6 +97,8 @@ github.com/spf13/viper v1.4.0/go.mod h1:PTJ7Z/lr49W6bUbkmS1V3by4uWynFiR9p7+dSq/y
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1w=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
+github.com/t94j0/array v0.0.0-20180426153242-68930562a6bd h1:RXtQ+gpgNU68cTZDcDTiP3OvInFVPVV1H/KJDd4B6VE=
+github.com/t94j0/array v0.0.0-20180426153242-68930562a6bd/go.mod h1:SApqaBuVRHQRjvoIbN++3aFXJjnWr0UkZM72QpvdFZA=
 github.com/t94j0/ja3-server v0.0.0-20181231152103-b9d2a4d79e7c h1:fbXJuwxAnVPO4IxOyMgNx89XG7qNAvkPYSKSmVFPYcQ=
 github.com/t94j0/ja3-server v0.0.0-20181231152103-b9d2a4d79e7c/go.mod h1:NTaBRrqDxHJrKFLvSeEClLj6ty+jrVCHF+vgCZizbdg=
 github.com/t94j0/ja3-server v0.0.0-20190613174454-90f0334d196a h1:0L/HcmngFEHu4SQqPdb0siP/EyvdJswSH6c0TkgoEeg=

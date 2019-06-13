@@ -9,6 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-redis/redis v6.15.2+incompatible // indirect
 	github.com/spf13/viper v1.4.0
+	github.com/t94j0/array v0.0.0-20180426153242-68930562a6bd
 	github.com/t94j0/ja3-server v0.0.0-20190613174454-90f0334d196a
 	golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae // indirect
 	gopkg.in/yaml.v2 v2.2.2

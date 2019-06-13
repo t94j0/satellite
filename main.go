@@ -49,9 +49,13 @@ func main() {
 
 	log.Printf("Loaded %d path(s)", paths.Len())
 
-	go createWatcher(serverPath, func() error {
-		return paths.Reload()
-	})
+	go func() {
+		if err := createWatcher(serverPath, func() error {
+			return paths.Reload()
+		}); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	server := NewServer(listen, certPath, keyPath)
 	log.Printf("Listening on port %s", config.GetString("listen"))
