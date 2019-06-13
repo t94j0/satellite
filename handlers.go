@@ -6,8 +6,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/CapacitorSet/ja3-server/crypto/tls"
-	"github.com/CapacitorSet/ja3-server/net/http"
+	"github.com/t94j0/ja3-server/crypto/tls"
+	"github.com/t94j0/ja3-server/net/http"
 )
 
 type Server struct {

@@ -8,8 +8,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/CapacitorSet/ja3-server/net/http"
 	"github.com/apcera/util/iprange"
+	"github.com/t94j0/ja3-server/net/http"
 	"gopkg.in/yaml.v2"
 )
 
