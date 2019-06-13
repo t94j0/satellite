@@ -16,14 +16,26 @@ import (
 type Path struct {
 	// FullPath is the path of the file to host
 	FullPath string
+	// AddHeaders are a dict of headers to add to every request
+	AddHeaders map[string]string `yaml:"add_headers"`
+	// AddHeadersSuccess are a dict of headers to add to every successful request
+	AddHeadersSuccess map[string]string `yaml:"add_headers_success"`
+	// AddHeadersFailure are a dict of headers to add to every hit, but failed header
+	AddHeadersFailure map[string]string `yaml:"add_headers_failure"`
+	// AddHeadersNotExist are a dict of headers to add to every 404
+	AddHeadersNotExist map[string]string `yaml:"add_headers_not_exist"`
 	// AUserAgent is the authorized user agents for a file
 	AuthorizedUserAgents []string `yaml:"authorized_useragents"`
 	// AuthorizedIPRange is the authorized range of IPs who are allowed to access a file
-	AuthorizedIPRange []string          `yaml:"authorized_iprange"`
-	AuthorizedMethods []string          `yaml:"authorized_methods"`
+	AuthorizedIPRange []string `yaml:"authorized_iprange"`
+	// AuthorizedMethods are the HTTP methods which can access the page
+	AuthorizedMethods []string `yaml:"authorized_methods"`
+	// AuthorizedHeaders are HTTP headers which must be present in order to access a file
 	AuthorizedHeaders map[string]string `yaml:"authorized_headers"`
-	AuthorizedJA3     []string          `yaml:"authorized_ja3"`
-	Once              bool              `yaml:"once"`
+	// AuthorizedJA3 are valid JA3 hashes
+	AuthorizedJA3 []string `yaml:"authorized_ja3"`
+	// Once files will only be served once before they are no longer able to be accessed
+	Once bool `yaml:"once"`
 }
 
 func NewPath(path string) (Path, error) {

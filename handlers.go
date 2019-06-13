@@ -10,6 +10,7 @@ import (
 	"github.com/t94j0/ja3-server/net/http"
 )
 
+// Server is used to serve HTTP(S)
 type Server struct {
 	port     string
 	keyPath  string
@@ -51,7 +52,15 @@ func (s Server) Start() error {
 	return nil
 }
 
+func (s Server) writeHeaders(w http.ResponseWriter, headers map[string]string) {
+	for name, value := range headers {
+		w.Header().Add(name, value)
+	}
+}
+
 func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path Path) {
+
+	s.writeHeaders(w, path.AddHeadersSuccess)
 	data, err := ioutil.ReadFile(path.FullPath)
 	if err != nil {
 		log.Println(err)
@@ -64,24 +73,26 @@ func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path Path
 	return
 }
 
-func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request) {
+func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path Path) {
+	s.writeHeaders(w, path.AddHeadersFailure)
 	io.WriteString(w, "Errored\n")
 }
 
-func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
+func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request, path Path) {
+	s.writeHeaders(w, path.AddHeadersNotExist)
 	// TODO: Write a 404 handler
 	io.WriteString(w, "404\n")
-	return
 }
 
 func (s Server) handler(w http.ResponseWriter, req *http.Request) {
-	file, exists := paths.Match(req.URL.Path)
+	path, exists := paths.Match(req.URL.Path)
 
+	s.writeHeaders(w, path.AddHeaders)
 	if !exists {
-		s.doesNotExistHandler(w, req)
+		s.doesNotExistHandler(w, req, path)
 	} else if file.ShouldHost(req) {
-		s.matchHandler(w, req, file)
+		s.matchHandler(w, req, path)
 	} else {
-		s.noMatchHandler(w, req)
+		s.noMatchHandler(w, req, path)
 	}
 }

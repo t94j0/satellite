@@ -39,10 +39,15 @@ func main() {
 	keyPath := config.GetString("ssl.key")
 	certPath := config.GetString("ssl.cert")
 
+	log.Printf("Using config file %s", config.ConfigFileUsed())
+	log.Printf("Using server path %s", serverPath)
+
 	paths, err = NewPaths(serverPath)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf("Loaded %d path(s)", paths.Len())
 
 	go createWatcher(serverPath, func() error {
 		return paths.Reload()

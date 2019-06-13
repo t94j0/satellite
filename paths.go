@@ -6,11 +6,13 @@ import (
 	"strings"
 )
 
+// Paths is the compilation of parsed paths
 type Paths struct {
 	base string
 	list map[string]Path
 }
 
+// NewPaths creates a new Paths variable from the specified base path
 func NewPaths(base string) (*Paths, error) {
 	list := make(map[string]Path)
 	ret := &Paths{
@@ -26,9 +28,16 @@ func NewPaths(base string) (*Paths, error) {
 	return ret, nil
 }
 
-func (paths *Paths) Match(page string) (Path, bool) {
-	p, b := paths.list[page]
+// Match matches a page given a URI. It returns the specified Path and a boolean
+// value to determine if there was a page that matched the URI
+func (paths *Paths) Match(URI string) (Path, bool) {
+	p, b := paths.list[URI]
 	return p, b
+}
+
+// Len returns the number of successfully parsed paths
+func (paths *Paths) Len() int {
+	return len(paths.list)
 }
 
 func (paths *Paths) createCompleted() error {
@@ -41,6 +50,7 @@ func (paths *Paths) createCompleted() error {
 	return os.Mkdir(name, os.FileMode(0777))
 }
 
+// Remove removes the specified path from the list of paths
 func (paths *Paths) Remove(path Path) {
 	// Remove path from list
 	for k, p := range paths.list {
@@ -49,8 +59,10 @@ func (paths *Paths) Remove(path Path) {
 			break
 		}
 	}
+	// TODO: Put removed Path into the `done` directory
 }
 
+// Reload refreshes the list of paths internally to Paths
 func (paths *Paths) Reload() error {
 	err := filepath.Walk(paths.base, func(oPath string, info os.FileInfo, err error) error {
 		if err != nil {
