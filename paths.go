@@ -49,12 +49,6 @@ func (paths *Paths) Remove(path Path) {
 			break
 		}
 	}
-
-	// Move old files to completed folder
-	completed := filepath.Join(paths.base, "done")
-	oldFile := path.FullPath
-	oldFileInfo := oldFile + ".info"
-	os.Rename(filepath.Join(paths.base))
 }
 
 func (paths *Paths) Reload() error {

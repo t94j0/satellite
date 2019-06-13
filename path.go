@@ -1,12 +1,14 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"io/ioutil"
 	"log"
 	"net"
-	"net/http"
 	"strings"
 
+	"github.com/CapacitorSet/ja3-server/net/http"
 	"github.com/apcera/util/iprange"
 	"gopkg.in/yaml.v2"
 )
@@ -20,6 +22,7 @@ type Path struct {
 	AuthorizedIPRange []string          `yaml:"authorized_iprange"`
 	AuthorizedMethods []string          `yaml:"authorized_methods"`
 	AuthorizedHeaders map[string]string `yaml:"authorized_headers"`
+	AuthorizedJA3     []string          `yaml:"authorized_ja3"`
 	Once              bool              `yaml:"once"`
 }
 
@@ -94,5 +97,24 @@ func (f Path) ShouldHost(req *http.Request) bool {
 		correctHeaders = true
 	}
 
-	return correctAgent && correctRange && correctMethods && correctHeaders
+	// Check JA3
+	hash := md5.Sum([]byte(req.JA3Fingerprint))
+	out := make([]byte, 32)
+	hex.Encode(out, hash[:])
+	ja3 := string(out)
+	log.Println("JA3:", ja3)
+
+	correctJA3 := false
+
+	if len(f.AuthorizedJA3) != 0 {
+		for _, j := range f.AuthorizedJA3 {
+			if ja3 == j {
+				correctJA3 = true
+			}
+		}
+	} else {
+		correctJA3 = true
+	}
+
+	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3
 }
