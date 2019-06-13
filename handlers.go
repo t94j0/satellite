@@ -90,7 +90,7 @@ func (s Server) handler(w http.ResponseWriter, req *http.Request) {
 	s.writeHeaders(w, path.AddHeaders)
 	if !exists {
 		s.doesNotExistHandler(w, req, path)
-	} else if file.ShouldHost(req) {
+	} else if path.ShouldHost(req) {
 		s.matchHandler(w, req, path)
 	} else {
 		s.noMatchHandler(w, req, path)
