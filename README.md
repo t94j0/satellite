@@ -52,7 +52,7 @@ ID of payload
 
 #### Example
 
-```
+```yaml
 id: 1
 ```
 
@@ -64,7 +64,7 @@ Number of times to serve file
 
 This will serve the file once before not allowing the file to be accessed anymore
 
-```
+```yaml
 id: 1
 serve: 1
 ```
@@ -76,7 +76,7 @@ List of User Agent strings to allow
 #### Example
 
 
-```
+```yaml
 id: 1
 authorized_useragents:
   - Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1
@@ -89,7 +89,7 @@ List of IPs or IP ranges who are allowed to view a file
 
 #### Example
 
-```
+```yaml
 id: 1
 authorized_iprange:
   - 192.168.0.1
@@ -102,7 +102,7 @@ Authorized HTTP methods
 
 #### Example
 
-```
+```yaml
 id: 1
 authorized_methods:
   - GET
@@ -115,7 +115,7 @@ Dictionary of headers which must be present
 
 #### Example
 
-```
+```yaml
 id: 1
 authorized_headers:
   Hacked: yes
@@ -123,7 +123,7 @@ authorized_headers:
 
 The request with a header of `Hacked` and a value of `yes`, like below, would be allowed to access the payload.
 
-```
+```yaml
 GET / HTTP/1.1
 Host: google.com
 Hacked: yes
@@ -136,7 +136,7 @@ Authorized JA3 hashes to access the file. More information about JA3 can be foun
 
 #### Example
 
-```
+```yaml
 id: 1
 authorized_ja3:
   - e7d705a3286e19ea42f587b344ee6865
@@ -149,7 +149,7 @@ Blacklisted IPs from accessing a payload
 
 #### Example
 
-```
+```yaml
 id: 1
 blacklist_iprange:
   - 94.130.90.152
@@ -165,13 +165,13 @@ In this case, when `/first` is requested, it is automatically served. When `/sec
 
 first.info
 
-```
+```yaml
 id: 1
 ```
 
 second.info
 
-```
+```yaml
 id: 2
 prereq:
   - 1
@@ -179,7 +179,7 @@ prereq:
 
 payload.info
 
-```
+```yaml
 id: 3
 prereq:
   - 1
@@ -192,7 +192,7 @@ Sets the Content-Type for the payload being served. More information about the C
 
 #### Example
 
-```
+```yaml
 id: 1
 content_type: application/msword
 ```
@@ -204,7 +204,7 @@ Sets Content-Disposition header for the payaload. There are two sub-keys: `type`
 #### Example
 
 
-```
+```yaml
 id: 1
 disposition:
   type: attachment
@@ -218,7 +218,7 @@ Executes a program, gives the HTTP request to stdin, and checks stdout against a
 
 #### Example
 
-```
+```yaml
 id: 1
 exec:
   script: /home/user/test.py
@@ -232,7 +232,7 @@ Adds the header to all HTTP responses.
 
 #### Example
 
-```
+```yaml
 id: 1
 add_headers:
   Accept-Encoding: gzip
@@ -259,7 +259,7 @@ Boolean to determine if the file should be served. This is mostly used by the DE
 
 #### Example
 
-```
+```yaml
 id: 1
 not_serving: true
 ```
