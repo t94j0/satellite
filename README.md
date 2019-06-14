@@ -1,5 +1,7 @@
 # DEITYSHADOW
 
+DEITYSHADOW is an HTTP(S) payload hosting service which has many options for filtering requests to ensure the correct target is getting the payload.
+
 
 ## Installation
 
@@ -10,7 +12,7 @@ TODO
 DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW/config.yml`, and `/etc/DEITYSHADOW/config.yml` for service configuration.
 
 | Key             | Configuration |
-|:---------------:|:-------------:|
+|-----------------|---------------|
 | server_root     | Server root directory |
 | listen          | IP:port combination to listen on. IP can be removed to sigify listening on 0.0.0.0 |
 | server_header   | Server header to give clients when requesting a page. More information can be found [here][server header] |
@@ -284,13 +286,7 @@ Example JSON body if one wished to reset ID 1.
 ```
 
 
-## TODO
-
-* Management API ideas
-* Systemd service file
-
-
-Open Source Projects Used:
+## Open Source Projects Used:
 
 * [JA3 Server][ja3server]
 
