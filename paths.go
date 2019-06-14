@@ -32,6 +32,24 @@ func NewPaths(base string) (*Paths, error) {
 	return ret, nil
 }
 
+// Out returns the list as a non-pointer map
+func (paths *Paths) Out() map[string]Path {
+	retPaths := make(map[string]Path, 0)
+	for k, path := range paths.list {
+		retPaths[k] = *path
+	}
+	return retPaths
+}
+
+func (paths *Paths) GetID(id uint) *Path {
+	for _, path := range paths.list {
+		if path.ID == id {
+			return path
+		}
+	}
+	return nil
+}
+
 // Match matches a page given a URI. It returns the specified Path and a boolean
 // value to determine if there was a page that matched the URI
 func (paths *Paths) Match(URI string) (*Path, bool) {

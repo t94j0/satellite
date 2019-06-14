@@ -18,7 +18,7 @@ func Config() (*viper.Viper, error) {
 
 	config.SetConfigName("config")
 	config.AddConfigPath("$HOME/.config/" + ProjectName)
-	config.AddConfigPath("$HOME/" + ProjectName)
+	config.AddConfigPath("$HOME/." + ProjectName)
 	config.AddConfigPath("/etc/" + ProjectName)
 
 	if err := config.ReadInConfig(); err != nil {
@@ -38,6 +38,9 @@ func main() {
 	listen := config.GetString("listen")
 	keyPath := config.GetString("ssl.key")
 	certPath := config.GetString("ssl.cert")
+	serverHeader := config.GetString("server_header")
+	managementIP := config.GetString("management.ip")
+	managementPath := config.GetString("management.path")
 
 	log.Printf("Using config file %s", config.ConfigFileUsed())
 	log.Printf("Using server path %s", serverPath)
@@ -57,7 +60,7 @@ func main() {
 		}
 	}()
 
-	server := NewServer(listen, certPath, keyPath)
+	server := NewServer(listen, certPath, keyPath, serverHeader, managementIP, managementPath)
 	log.Printf("Listening on port %s", config.GetString("listen"))
 	if err := server.Start(); err != nil {
 		log.Fatal(err)

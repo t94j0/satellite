@@ -11,53 +11,56 @@ import (
 
 	"github.com/apcera/util/iprange"
 	"github.com/t94j0/ja3-server/net/http"
+	"github.com/t94j0/ja3-server/net/http/httputil"
 	"gopkg.in/yaml.v2"
 )
 
 // Path is an available path that can be accessed on the server
 type Path struct {
-	// FullPath is the path of the file to host
-	FullPath string
+	// fullPath is the path of the file to host
+	FullPath string `yaml:"-"`
 	// ID of path
-	ID uint
+	ID uint `yaml:"id"`
+	// NotServing does not serve the page when NotServing is true
+	NotServing bool `yaml:"not_serving,omitempty"`
 	// AddHeaders are a dict of headers to add to every request
-	AddHeaders map[string]string `yaml:"add_headers"`
+	AddHeaders map[string]string `yaml:"add_headers,omitempty"`
 	// AddHeadersSuccess are a dict of headers to add to every successful request
-	AddHeadersSuccess map[string]string `yaml:"add_headers_success"`
+	AddHeadersSuccess map[string]string `yaml:"add_headers_success,omitempty"`
 	// AddHeadersFailure are a dict of headers to add to every hit, but failed header
-	AddHeadersFailure map[string]string `yaml:"add_headers_failure"`
+	AddHeadersFailure map[string]string `yaml:"add_headers_failure,omitempty"`
 	// AUserAgent is the authorized user agents for a file
-	AuthorizedUserAgents []string `yaml:"authorized_useragents"`
+	AuthorizedUserAgents []string `yaml:"authorized_useragents,omitempty"`
 	// AuthorizedIPRange is the authorized range of IPs who are allowed to access a file
-	AuthorizedIPRange []string `yaml:"authorized_iprange"`
+	AuthorizedIPRange []string `yaml:"authorized_iprange,omitempty"`
 	// AuthorizedMethods are the HTTP methods which can access the page
-	AuthorizedMethods []string `yaml:"authorized_methods"`
+	AuthorizedMethods []string `yaml:"authorized_methods,omitempty"`
 	// AuthorizedHeaders are HTTP headers which must be present in order to access a file
-	AuthorizedHeaders map[string]string `yaml:"authorized_headers"`
+	AuthorizedHeaders map[string]string `yaml:"authorized_headers,omitempty"`
 	// AuthorizedJA3 are valid JA3 hashes
-	AuthorizedJA3 []string `yaml:"authorized_ja3"`
+	AuthorizedJA3 []string `yaml:"authorized_ja3,omitempty"`
 	// BlacklistIPRange are blacklisted IPs
-	BlacklistIPRange []string `yaml:"blacklist_iprange"`
+	BlacklistIPRange []string `yaml:"blacklist_iprange,omitempty"`
 	// Serve is the number of times the file should be served
-	Serve uint `yaml:"serve"`
-	// timesServed is the number of times served so far
-	timesServed uint
+	Serve uint `yaml:"serve,omitempty"`
+	// TimesServed is the number of times served so far
+	TimesServed uint `yaml:"times_served,omitempty"`
 	// ContentType tells the browser what content should be parsed. A list of MIME
 	// types can be found here: https://www.freeformatter.com/mime-types-list.html
-	ContentType string `yaml:"content_type"`
+	ContentType string `yaml:"content_type,omitempty"`
 	// Disposition sets the Content-Disposition header
 	Disposition struct {
 		// Type is the type of disposition. Usually either inline or attachment
 		Type string `yaml:"type"`
 		// FileName is the name of the file if Content.Type is attachment
 		FileName string `yaml:"file_name"`
-	} `yaml:"disposition"`
+	} `yaml:"disposition,omitempty"`
 	// IDs of hits that need to happen before the current one will succeed
-	PrereqIDs []uint `yaml:"prereq"`
+	PrereqIDs []uint `yaml:"prereq,omitempty"`
 	Exec      struct {
 		ScriptPath string `yaml:"script"`
 		Output     string `yaml:"output"`
-	} `yaml:"exec"`
+	} `yaml:"exec,omitempty"`
 }
 
 // NewPath parses a .info file in the base path directory
@@ -95,7 +98,8 @@ func (f *Path) ContentHeaders() map[string]string {
 	return headers
 }
 
-func getHost(inp string) net.IP {
+func getHost(req *http.Request) net.IP {
+	inp := req.RemoteAddr
 	split := strings.Split(inp, ":")
 	filter := split[:len(split)-1]
 	full := strings.Join(filter, ":")
@@ -110,7 +114,21 @@ func (f *Path) ShouldRemove() bool {
 	if f.Serve == 0 {
 		return false
 	}
-	return f.timesServed >= f.Serve
+	return f.TimesServed >= f.Serve
+}
+
+// Remove removes the ability to access the file
+func (f *Path) Remove() error {
+	f.NotServing = true
+	return f.Write()
+}
+
+func (f *Path) Write() error {
+	out, err := yaml.Marshal(f)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(f.FullPath+".info", out, 0644)
 }
 
 // ShouldHost does the checking to see if the requested file should be given to a target
@@ -134,7 +152,7 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 	}
 
 	// IP Range
-	targetHost := getHost(req.RemoteAddr)
+	targetHost := getHost(req)
 	correctRange := false
 	if len(f.AuthorizedIPRange) != 0 {
 		for _, r := range f.AuthorizedIPRange {
@@ -208,13 +226,27 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 	// Exec
 	correctExec := false
 	if f.Exec.ScriptPath != "" {
-		out, err := exec.Command(f.Exec.ScriptPath).Output()
+		cmd := exec.Command(f.Exec.ScriptPath)
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return false, err
+		}
+
+		go func() {
+			defer stdin.Close()
+			dump, _ := httputil.DumpRequest(req, true)
+			stdin.Write(dump)
+		}()
+
+		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return false, err
 		}
 		if f.Exec.Output == strings.TrimSuffix(string(out), "\n") {
 			correctExec = true
 		}
+
 	} else {
 		correctExec = true
 	}
@@ -228,8 +260,11 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && correctExec
 
 	if didSucceed {
-		f.timesServed += 1
+		f.TimesServed += 1
 		identifier.Hit(targetHost, f.ID)
+		if err := f.Write(); err != nil {
+			return false, err
+		}
 	}
 
 	return didSucceed, nil
