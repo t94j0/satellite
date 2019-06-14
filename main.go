@@ -53,7 +53,7 @@ func main() {
 	log.Printf("Loaded %d path(s)", paths.Len())
 
 	go func() {
-		if err := createWatcher(serverPath, func() error {
+		if err := createWatcher(serverPath, "1s", func() error {
 			return paths.Reload()
 		}); err != nil {
 			log.Fatal(err)

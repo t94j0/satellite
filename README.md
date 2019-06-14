@@ -7,6 +7,7 @@ DEITYSHADOW is an HTTP(S) payload hosting service which has many options for fil
 
 TODO
 
+
 ## Configuration
 
 DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW/config.yml`, and `/etc/DEITYSHADOW/config.yml` for service configuration.
@@ -40,6 +41,7 @@ ssl:
   cert: /home/<user>/.config/DEITYSHADOW/keys/cert.pem
 ```
 
+
 ## Serving Payloads
 
 In the `server_root` directory chosen in the [configuration](#configuration) section, place any files you want to serve as a payload. Along with those files, create a `<payload_name>.info` file. For example, if you want to host a payload called `index.html`, make `index.html.info` as well. .info files are YML which contain filtering information for the payload you are hosting.
@@ -47,6 +49,7 @@ In the `server_root` directory chosen in the [configuration](#configuration) sec
 The only required field in a .info file is the `id` field. Every payload hosted must have a unique, greater-than-zero, integer value `id` field.
 
 Here are all the filtering options for a file.
+
 
 ### id
 
