@@ -18,7 +18,7 @@ DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW
 | listen          | IP:port combination to listen on. IP can be removed to sigify listening on 0.0.0.0 |
 | server_header   | Server header to give clients when requesting a page. More information can be found [here][server header] |
 | management.ip   | IP (or range) which is allowed to view the management portal |
-| management.path | Management server URL path. Takes precidence over any already-existing paths |
+| management.path | Management server URL path. If this option is not specified, the route does not get created. Takes precidence over any already-existing paths |
 | ssl.key         | SSL key path |
 | ssl.cert        | SSL cert path |
 

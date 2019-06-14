@@ -38,14 +38,14 @@ func NewServer(port, certPath, keyPath, serverHeader, managementIP, managementPa
 
 // Start makes the server begin listening
 func (s Server) Start() error {
+	// HTTP handlers
 	mux := http.NewServeMux()
 	if s.managementPath != "" {
 		mux.HandleFunc(s.managementPath, s.managementHandler)
 	}
 	mux.HandleFunc("/", s.handler)
-	//handler := http.HandlerFunc(s.handler)
-	server := &http.Server{Addr: s.port, Handler: mux}
 
+	server := &http.Server{Addr: s.port, Handler: mux}
 	ln, err := net.Listen("tcp", s.port)
 	if err != nil {
 		return err
