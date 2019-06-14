@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os/exec"
@@ -41,11 +42,16 @@ type Path struct {
 	Serve uint `yaml:"serve"`
 	// timesServed is the number of times served so far
 	timesServed uint
-	// Download tells browser the file should be downloaded instead of rendered. Overwrites ContentType
-	Download bool `yaml:"download"`
 	// ContentType tells the browser what content should be parsed. A list of MIME
 	// types can be found here: https://www.freeformatter.com/mime-types-list.html
 	ContentType string `yaml:"content_type"`
+	// Disposition sets the Content-Disposition header
+	Disposition struct {
+		// Type is the type of disposition. Usually either inline or attachment
+		Type string `yaml:"type"`
+		// FileName is the name of the file if Content.Type is attachment
+		FileName string `yaml:"file_name"`
+	} `yaml:"disposition"`
 	// IDs of hits that need to happen before the current one will succeed
 	PrereqIDs []uint `yaml:"prereq"`
 	Exec      struct {
@@ -70,6 +76,25 @@ func NewPath(path string) (*Path, error) {
 	return &infoPath, nil
 }
 
+// ContentHeaders sets the Content-Type and Content-Disposition headers.
+func (f *Path) ContentHeaders() map[string]string {
+	headers := make(map[string]string)
+
+	if f.ContentType != "" {
+		headers["Content-Type"] = f.ContentType
+	}
+
+	if f.Disposition.Type != "" {
+		if f.Disposition.FileName != "" {
+			headers["Content-Disposition"] = fmt.Sprintf("%s; filename=\"%s\"", f.Disposition.Type, f.Disposition.FileName)
+		} else {
+			headers["Content-Disposition"] = f.Disposition.Type
+		}
+	}
+
+	return headers
+}
+
 func getHost(inp string) net.IP {
 	split := strings.Split(inp, ":")
 	filter := split[:len(split)-1]
@@ -79,6 +104,8 @@ func getHost(inp string) net.IP {
 	return net.ParseIP(trimmed)
 }
 
+// ShouldRemove determines if a path should be removed because the number of
+// times served has been reached
 func (f *Path) ShouldRemove() bool {
 	if f.Serve == 0 {
 		return false

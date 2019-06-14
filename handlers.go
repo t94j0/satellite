@@ -91,11 +91,7 @@ func (s Server) writeHeaders(w http.ResponseWriter, headers map[string]string) {
 // request. This means serve the target file
 func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
 	s.writeHeaders(w, path.AddHeadersSuccess)
-	if path.Download {
-		w.Header().Add("Content-Type", "application/octet-stream")
-	} else if path.ContentType != "" {
-		w.Header().Add("Content-Type", path.ContentType)
-	}
+	s.writeHeaders(w, path.ContentHeaders())
 	data, err := ioutil.ReadFile(path.FullPath)
 	if err != nil {
 		log.Println(err)
