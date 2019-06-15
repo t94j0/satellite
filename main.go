@@ -41,6 +41,7 @@ func main() {
 	serverHeader := config.GetString("server_header")
 	managementIP := config.GetString("management.ip")
 	managementPath := config.GetString("management.path")
+	indexPath := config.GetString("index")
 
 	log.Printf("Using config file %s", config.ConfigFileUsed())
 	log.Printf("Using server path %s", serverPath)
@@ -60,7 +61,7 @@ func main() {
 		}
 	}()
 
-	server := NewServer(listen, certPath, keyPath, serverHeader, managementIP, managementPath)
+	server := NewServer(listen, certPath, keyPath, serverHeader, managementIP, managementPath, indexPath)
 	log.Printf("Listening on port %s", config.GetString("listen"))
 	if err := server.Start(); err != nil {
 		log.Fatal(err)

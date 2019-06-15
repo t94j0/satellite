@@ -20,11 +20,12 @@ type Server struct {
 	serverHeader   string
 	managementIP   string
 	managementPath string
+	indexPath      string
 	identifier     *ClientID
 }
 
 // NewServer creates a new Server object
-func NewServer(port, certPath, keyPath, serverHeader, managementIP, managementPath string) Server {
+func NewServer(port, certPath, keyPath, serverHeader, managementIP, managementPath, indexPath string) Server {
 	return Server{
 		port:           port,
 		keyPath:        keyPath,
@@ -32,6 +33,7 @@ func NewServer(port, certPath, keyPath, serverHeader, managementIP, managementPa
 		serverHeader:   serverHeader,
 		managementIP:   managementIP,
 		managementPath: managementPath,
+		indexPath:      indexPath,
 		identifier:     NewClientID(),
 	}
 }
@@ -73,6 +75,10 @@ func (s Server) Start() error {
 // if the file exist, the file should be hosted (based on Path rules), and if
 // the file should not be hosted
 func (s Server) handler(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/" {
+		req.URL.Path = s.indexPath
+	}
+
 	path, exists := paths.Match(req.URL.Path)
 
 	if s.serverHeader != "" {

@@ -5,8 +5,12 @@ DEITYSHADOW is an HTTP(S) payload hosting service which has many options for fil
 
 ## Installation
 
-TODO
+1. Create SSL keys
 
+`openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365`
+`openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>`
+
+TODO
 
 ## Configuration
 
@@ -21,6 +25,7 @@ DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW
 | management.path | Management server URL path. If this option is not specified, the route does not get created. Takes precidence over any already-existing paths |
 | ssl.key         | SSL key path |
 | ssl.cert        | SSL cert path |
+| index           | Index path for when a user requests `/` |
 
 
 An example configuration is shown below.
@@ -29,6 +34,7 @@ An example configuration is shown below.
 ```yaml
 server_path: /var/www/html
 listen: 127.0.0.1:8080
+index: /index.html
 
 server_header: Apache/2.4.1 (Unix)
 
