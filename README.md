@@ -42,7 +42,7 @@ server_path: /var/www/html
 listen: 127.0.0.1:8080
 index: /index.html
 
-not_found_redirect:
+not_found:
   redirect: https://amazon.com
 
 server_header: Apache/2.4.1 (Unix)
