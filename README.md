@@ -1,6 +1,6 @@
 # DEITYSHADOW
 
-DEITYSHADOW is an HTTP(S) payload hosting service which has many options for filtering requests to ensure the correct target is getting the payload.
+DEITYSHADOW is an web payload hosting service which filters requests to ensure the correct target is getting a payload. This can also be a useful service for hosting files that should be only accessed in very specific circumstances.
 
 
 ## Installation
@@ -10,22 +10,28 @@ DEITYSHADOW is an HTTP(S) payload hosting service which has many options for fil
 `openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365`
 `openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>`
 
+2. Build Project
+
+`go get -u github.com/t94j0/DEITYSHADOW`
+
 TODO
 
 ## Configuration
 
 DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW/config.yml`, and `/etc/DEITYSHADOW/config.yml` for service configuration.
 
-| Key             | Configuration |
-|-----------------|---------------|
-| server_root     | Server root directory |
-| listen          | IP:port combination to listen on. IP can be removed to sigify listening on 0.0.0.0 |
-| server_header   | Server header to give clients when requesting a page. More information can be found [here][server header] |
-| management.ip   | IP (or range) which is allowed to view the management portal |
-| management.path | Management server URL path. If this option is not specified, the route does not get created. Takes precidence over any already-existing paths |
-| ssl.key         | SSL key path |
-| ssl.cert        | SSL cert path |
-| index           | Index path for when a user requests `/` |
+| Key                | Configuration |
+|--------------------|---------------|
+| server_root        | Server root directory |
+| listen             | IP:port combination to listen on. If this IP is removed, the service will listen on 0.0.0.0 |
+| server_header      | Server header to give clients when requesting a page. More information can be found [here][server header] |
+| management.ip      | IP (or range) which is allowed to view the management portal |
+| management.path    | Management server URL path. If this option is not specified, the route does not get created. Takes precedence over any already-existing paths |
+| ssl.key            | SSL key path |
+| ssl.cert           | SSL cert path |
+| index              | Index path for when a user requests `/` |
+| not_found.redirect | Redirect to give page when a page isn't found |
+| not_found.render   | Path of file to render when a page isn't found |
 
 
 An example configuration is shown below.
@@ -35,6 +41,9 @@ An example configuration is shown below.
 server_path: /var/www/html
 listen: 127.0.0.1:8080
 index: /index.html
+
+not_found_redirect:
+  redirect: https://amazon.com
 
 server_header: Apache/2.4.1 (Unix)
 
@@ -210,7 +219,7 @@ content_type: application/msword
 
 ### disposition
 
-Sets Content-Disposition header for the payaload. There are two sub-keys: `type` and `file_name`. `type` can either be `inline` or `attachment`. `file_name` is the name for the attachment if the attachment option is chosen
+Sets Content-Disposition header for the payload. There are two sub-keys: `type` and `file_name`. `type` can either be `inline` or `attachment`. `file_name` is the name for the attachment if the attachment option is chosen
 
 #### Example
 
@@ -293,6 +302,10 @@ Example JSON body if one wished to reset ID 1.
 ```json
 { "id": 1, "reset": true }
 ```
+
+## TODO
+
+* Move to paths instead of IDs
 
 
 ## Open Source Projects Used:

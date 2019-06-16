@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -12,30 +13,52 @@ import (
 	"github.com/t94j0/ja3-server/net/http"
 )
 
-// Server is used to serve HTTP(S)
-type Server struct {
-	port           string
-	keyPath        string
-	certPath       string
-	serverHeader   string
-	managementIP   string
-	managementPath string
-	indexPath      string
-	identifier     *ClientID
+// ServerConfig is configuration for the server
+type ServerConfig struct {
+	Port             string
+	KeyPath          string
+	CertPath         string
+	ServerHeader     string
+	ManagementIP     string
+	ManagementPath   string
+	IndexPath        string
+	NotFoundRedirect string
+	NotFoundRender   string
 }
 
+// Server is used to serve HTTP(S)
+type Server struct {
+	port             string
+	keyPath          string
+	certPath         string
+	serverHeader     string
+	managementIP     string
+	managementPath   string
+	indexPath        string
+	notFoundRedirect string
+	notFoundRender   string
+	identifier       *ClientID
+}
+
+var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
+
 // NewServer creates a new Server object
-func NewServer(port, certPath, keyPath, serverHeader, managementIP, managementPath, indexPath string) Server {
-	return Server{
-		port:           port,
-		keyPath:        keyPath,
-		certPath:       certPath,
-		serverHeader:   serverHeader,
-		managementIP:   managementIP,
-		managementPath: managementPath,
-		indexPath:      indexPath,
-		identifier:     NewClientID(),
+func NewServer(config ServerConfig) (Server, error) {
+	if config.NotFoundRedirect != "" && config.NotFoundRender != "" {
+		return Server{}, ErrNotFoundConfig
 	}
+	return Server{
+		port:             config.Port,
+		keyPath:          config.KeyPath,
+		certPath:         config.CertPath,
+		serverHeader:     config.ServerHeader,
+		managementIP:     config.ManagementIP,
+		managementPath:   config.ManagementPath,
+		indexPath:        config.IndexPath,
+		notFoundRedirect: config.NotFoundRedirect,
+		notFoundRender:   config.NotFoundRender,
+		identifier:       NewClientID(),
+	}, nil
 }
 
 // Start makes the server begin listening
@@ -48,12 +71,12 @@ func (s Server) Start() error {
 	mux.HandleFunc("/", s.handler)
 
 	server := &http.Server{Addr: s.port, Handler: mux}
+
 	ln, err := net.Listen("tcp", s.port)
 	if err != nil {
 		return err
 	}
 	defer ln.Close()
-
 	cert, err := tls.LoadX509KeyPair(s.certPath, s.keyPath)
 	if err != nil {
 		return err
@@ -61,21 +84,14 @@ func (s Server) Start() error {
 	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
 
 	tlsListener := tls.NewListener(ln, &tlsConfig)
-	err = server.Serve(tlsListener)
-	if err != nil {
-		return err
-	}
-
-	ln.Close()
-
-	return nil
+	return server.Serve(tlsListener)
 }
 
 // handler manages all path handling. It redirects the task of handling based on
 // if the file exist, the file should be hosted (based on Path rules), and if
 // the file should not be hosted
 func (s Server) handler(w http.ResponseWriter, req *http.Request) {
-	if req.URL.Path == "/" {
+	if req.URL.Path == "/" && s.indexPath != "" {
 		req.URL.Path = s.indexPath
 	}
 
@@ -137,8 +153,18 @@ func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *P
 
 // doesNotExistHandler is 404
 func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
-	// TODO: Write a 404 handler
-	io.WriteString(w, "404\n")
+	if s.notFoundRedirect != "" {
+		http.Redirect(w, req, s.notFoundRedirect, 301)
+	} else if s.notFoundRender != "" {
+		path, found := paths.Match(s.notFoundRender)
+		if !found {
+			log.Println("Error: not_found render page not found")
+			return
+		}
+		s.matchHandler(w, req, path)
+	} else {
+		io.WriteString(w, "404\n")
+	}
 }
 
 func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {

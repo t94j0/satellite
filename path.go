@@ -17,7 +17,7 @@ import (
 
 // Path is an available path that can be accessed on the server
 type Path struct {
-	// fullPath is the path of the file to host
+	// FullPath is the path of the file to host
 	FullPath string `yaml:"-"`
 	// ID of path
 	ID uint `yaml:"id"`

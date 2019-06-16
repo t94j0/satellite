@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+	"github.com/pkg/errors"
+
 	"github.com/spf13/viper"
 )
 
@@ -36,11 +38,13 @@ func main() {
 
 	serverPath := config.GetString("server_path")
 	listen := config.GetString("listen")
-	keyPath := config.GetString("ssl.key")
 	certPath := config.GetString("ssl.cert")
+	keyPath := config.GetString("ssl.key")
 	serverHeader := config.GetString("server_header")
 	managementIP := config.GetString("management.ip")
 	managementPath := config.GetString("management.path")
+	notFoundRedirect := config.GetString("not_found.redirect")
+	notFoundRender := config.GetString("not_found.render")
 	indexPath := config.GetString("index")
 
 	log.Printf("Using config file %s", config.ConfigFileUsed())
@@ -61,7 +65,23 @@ func main() {
 		}
 	}()
 
-	server := NewServer(listen, certPath, keyPath, serverHeader, managementIP, managementPath, indexPath)
+	serverConfig := ServerConfig{
+		Port:             listen,
+		KeyPath:          keyPath,
+		CertPath:         certPath,
+		ServerHeader:     serverHeader,
+		ManagementIP:     managementIP,
+		ManagementPath:   managementPath,
+		IndexPath:        indexPath,
+		NotFoundRedirect: notFoundRedirect,
+		NotFoundRender:   notFoundRender,
+	}
+
+	server, err := NewServer(serverConfig)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "server configuration error"))
+	}
+
 	log.Printf("Listening on port %s", config.GetString("listen"))
 	if err := server.Start(); err != nil {
 		log.Fatal(err)
