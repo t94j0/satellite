@@ -13,19 +13,6 @@ import (
 	"github.com/t94j0/ja3-server/net/http"
 )
 
-// ServerConfig is configuration for the server
-type ServerConfig struct {
-	Port             string
-	KeyPath          string
-	CertPath         string
-	ServerHeader     string
-	ManagementIP     string
-	ManagementPath   string
-	IndexPath        string
-	NotFoundRedirect string
-	NotFoundRender   string
-}
-
 // Server is used to serve HTTP(S)
 type Server struct {
 	port             string
@@ -43,20 +30,20 @@ type Server struct {
 var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
 
 // NewServer creates a new Server object
-func NewServer(config ServerConfig) (Server, error) {
-	if config.NotFoundRedirect != "" && config.NotFoundRender != "" {
+func NewServer(port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string) (Server, error) {
+	if notFoundRedirect != "" && notFoundRender != "" {
 		return Server{}, ErrNotFoundConfig
 	}
 	return Server{
-		port:             config.Port,
-		keyPath:          config.KeyPath,
-		certPath:         config.CertPath,
-		serverHeader:     config.ServerHeader,
-		managementIP:     config.ManagementIP,
-		managementPath:   config.ManagementPath,
-		indexPath:        config.IndexPath,
-		notFoundRedirect: config.NotFoundRedirect,
-		notFoundRender:   config.NotFoundRender,
+		port:             port,
+		keyPath:          keyPath,
+		certPath:         certPath,
+		serverHeader:     serverHeader,
+		managementIP:     managementIP,
+		managementPath:   managementPath,
+		indexPath:        indexPath,
+		notFoundRedirect: notFoundRedirect,
+		notFoundRender:   notFoundRender,
 		identifier:       NewClientID(),
 	}, nil
 }

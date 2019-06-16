@@ -4,31 +4,11 @@ import (
 	"log"
 
 	"github.com/pkg/errors"
-
-	"github.com/spf13/viper"
 )
 
 const ProjectName string = "DEITYSHADOW"
 
 var paths *Paths
-
-func Config() (*viper.Viper, error) {
-	config := viper.New()
-
-	config.SetDefault("server_path", "/var/www/html")
-	config.SetDefault("listen", "127.0.0.1:8080")
-
-	config.SetConfigName("config")
-	config.AddConfigPath("$HOME/.config/" + ProjectName)
-	config.AddConfigPath("$HOME/." + ProjectName)
-	config.AddConfigPath("/etc/" + ProjectName)
-
-	if err := config.ReadInConfig(); err != nil {
-		return config, err
-	}
-
-	return config, nil
-}
 
 func main() {
 	config, err := Config()
@@ -65,19 +45,17 @@ func main() {
 		}
 	}()
 
-	serverConfig := ServerConfig{
-		Port:             listen,
-		KeyPath:          keyPath,
-		CertPath:         certPath,
-		ServerHeader:     serverHeader,
-		ManagementIP:     managementIP,
-		ManagementPath:   managementPath,
-		IndexPath:        indexPath,
-		NotFoundRedirect: notFoundRedirect,
-		NotFoundRender:   notFoundRender,
-	}
-
-	server, err := NewServer(serverConfig)
+	server, err := NewServer(
+		listen,
+		keyPath,
+		certPath,
+		serverHeader,
+		managementIP,
+		managementPath,
+		indexPath,
+		notFoundRedirect,
+		notFoundRender,
+	)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "server configuration error"))
 	}
