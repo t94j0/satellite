@@ -296,7 +296,7 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 
 | Key | Description |
 |-----|-------------|
-| path | Info object to upload |
+| path | Info object to upload. Look at the options in `paths.go` |
 | file | String with file data as base64 |
 
 ```json
