@@ -55,6 +55,8 @@ func (s Server) Start() error {
 	mux := http.NewServeMux()
 	if s.managementPath != "" {
 		mux.HandleFunc(s.managementPath, s.managementHandler)
+		mux.HandleFunc(s.managementPath+"/reset", s.resetHandler)
+		mux.HandleFunc(s.managementPath+"/new", s.uploadHandler)
 	}
 	mux.HandleFunc("/", s.handler)
 
@@ -172,25 +174,16 @@ func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // managementHandler handles management information
-func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {
+func (s Server) managementEnabled(req *http.Request) (bool, error) {
 	mgmtRange, err := iprange.ParseIPRange(s.managementIP)
 	if err != nil {
-		log.Println(err)
+		return false, err
 	}
 	targetHost := getHost(req)
-	if !mgmtRange.Contains(targetHost) {
-		s.doesNotExistHandler(w, req)
-		return
-	}
-
-	if req.Method == "GET" {
-		s.managementGetHandler(w, req)
-	} else if req.Method == "POST" {
-		s.managementPostHandler(w, req)
-	}
+	return mgmtRange.Contains(targetHost), true
 }
 
-func (s Server) managementGetHandler(w http.ResponseWriter, req *http.Request) {
+func managementHandler(w http.ResponseWriter, req *http.Request) {
 	outPaths := paths.Out()
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(outPaths); err != nil {
@@ -200,12 +193,11 @@ func (s Server) managementGetHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s Server) managementPostHandler(w http.ResponseWriter, req *http.Request) {
-	type Management struct {
-		Path  string `json:"path"`
-		Reset bool   `json:"reset"`
+func resetHandler(w http.ResponseWriter, req *http.Request) {
+	type Body struct {
+		Path string `json:"path"`
 	}
-	var mgmt Management
+	var mgmt Body
 
 	if req.Body == nil {
 		log.Println("No HTTP body")
@@ -227,5 +219,21 @@ func (s Server) managementPostHandler(w http.ResponseWriter, req *http.Request) 
 			s.doesNotExistHandler(w, req)
 			return
 		}
+	}
+}
+
+func uploadHandler(w http.ResponseWriter, req *http.Request) {
+	newPath := &Path{}
+
+	if err := json.NewDecoder(req.Body).Decode(newPath); err != nil {
+		log.Println(err)
+		s.doesNotExistHandler(w, req)
+		return
+	}
+
+	if err := newPath.Write(); err != nil {
+		log.Println(err)
+		s.doesNotExistHandler(w, req)
+		return
 	}
 }

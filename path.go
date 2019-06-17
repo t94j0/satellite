@@ -70,19 +70,19 @@ type Path struct {
 }
 
 // NewPath parses a .info file in the base path directory
-func NewPath(path string) (*Path, error) {
-	var infoPath Path
+func NewPath(infoPath string) (*Path, error) {
+	var newInfo Path
 
-	data, err := ioutil.ReadFile(path)
+	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
 		return &infoPath, err
 	}
 
-	if err := yaml.Unmarshal(data, &infoPath); err != nil {
-		return &infoPath, err
+	if err := yaml.Unmarshal(data, &newInfo); err != nil {
+		return &newInfo, err
 	}
 
-	return &infoPath, nil
+	return &newInfo, nil
 }
 
 // ContentHeaders sets the Content-Type and Content-Disposition headers.
@@ -129,6 +129,7 @@ func (f *Path) Remove() error {
 	return f.Write()
 }
 
+// Write Info path to file
 func (f *Path) Write() error {
 	out, err := yaml.Marshal(f)
 	if err != nil {
