@@ -2,6 +2,7 @@ package main
 
 import "github.com/spf13/viper"
 
+// Config sets the config
 func Config() (*viper.Viper, error) {
 	config := viper.New()
 

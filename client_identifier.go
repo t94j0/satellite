@@ -33,7 +33,7 @@ func (c *ClientID) Match(ip net.IP, list []string) bool {
 		return false
 	}
 
-	for i, _ := range list {
+	for i := range list {
 		if list[i] != matchList[i] {
 			return false
 		}

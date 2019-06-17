@@ -266,7 +266,7 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && correctExec
 
 	if didSucceed {
-		f.TimesServed += 1
+		f.TimesServed++
 		identifier.Hit(targetHost, f.Path)
 		if err := f.Write(); err != nil {
 			return false, err

@@ -27,6 +27,7 @@ type Server struct {
 	identifier       *ClientID
 }
 
+// ErrNotFoundConfig is an error when both redirection options are present
 var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
 
 // NewServer creates a new Server object
@@ -150,7 +151,7 @@ func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *P
 		}
 		s.render(w, req, newPath)
 	} else {
-		io.WriteString(w, "Errored\n")
+		io.WriteString(w, "404-like\n")
 	}
 }
 
@@ -170,6 +171,7 @@ func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// managementHandler handles management information
 func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {
 	mgmtRange, err := iprange.ParseIPRange(s.managementIP)
 	if err != nil {

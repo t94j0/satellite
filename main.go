@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ProjectName is the current project name
 const ProjectName string = "DEITYSHADOW"
 
 var paths *Paths

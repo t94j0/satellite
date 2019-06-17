@@ -74,6 +74,7 @@ func (paths *Paths) Remove(path *Path) {
 	// TODO: Put removed Path into the `done` directory
 }
 
+// ErrPath is errors describing the path
 type ErrPath struct {
 	path string
 	err  string
