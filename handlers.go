@@ -15,6 +15,7 @@ import (
 
 // Server is used to serve HTTP(S)
 type Server struct {
+	serverPath       string
 	port             string
 	keyPath          string
 	certPath         string
@@ -31,11 +32,12 @@ type Server struct {
 var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
 
 // NewServer creates a new Server object
-func NewServer(port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string) (Server, error) {
+func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string) (Server, error) {
 	if notFoundRedirect != "" && notFoundRender != "" {
 		return Server{}, ErrNotFoundConfig
 	}
 	return Server{
+		serverPath:       serverPath,
 		port:             port,
 		keyPath:          keyPath,
 		certPath:         certPath,
@@ -183,7 +185,7 @@ func (s Server) managementEnabled(req *http.Request) (bool, error) {
 	return mgmtRange.Contains(targetHost), true
 }
 
-func managementHandler(w http.ResponseWriter, req *http.Request) {
+func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {
 	outPaths := paths.Out()
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(outPaths); err != nil {
@@ -193,7 +195,7 @@ func managementHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func resetHandler(w http.ResponseWriter, req *http.Request) {
+func (s Server) resetHandler(w http.ResponseWriter, req *http.Request) {
 	type Body struct {
 		Path string `json:"path"`
 	}
@@ -222,18 +224,50 @@ func resetHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func uploadHandler(w http.ResponseWriter, req *http.Request) {
-	newPath := &Path{}
+func (s Server) uploadHandler(w http.ResponseWriter, req *http.Request) {
+	type Body struct {
+		Path Path   `json:"path"`
+		File string `json:"file"`
+	}
 
+	var newPath Body
+
+	// Decode body
 	if err := json.NewDecoder(req.Body).Decode(newPath); err != nil {
 		log.Println(err)
-		s.doesNotExistHandler(w, req)
+		http.Error(w, "failure to decode body", http.StatusBadRequest)
 		return
 	}
 
-	if err := newPath.Write(); err != nil {
+	// Decode file as b64
+	fileData, err := base64.StdEncoding.DecodeString(newPath.File)
+	if err != nil {
 		log.Println(err)
-		s.doesNotExistHandler(w, req)
+		http.Error(w, "failure to base64 decode body", http.StatusBadRequest)
+		return
+	}
+
+	path := filepath.Join(s.serverPath, newPath.Path)
+
+	// Write data file
+	if err := ioutil.WriteFile(path, fileData, 0644); err != nil {
+		log.Println(err)
+		http.Error(w, "failure to write data file", http.StatusBadRequest)
+		return
+	}
+
+	// Marshal info file to yaml
+	infoData, err := yaml.Marshal(&newPath.Path)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "failure marshal info to yaml", http.StatusBadRequest)
+		return
+	}
+
+	// Write YAML
+	if err := ioutil.WriteFile(path+".info", infoData, 0644); err != nil {
+		log.Println(err)
+		http.Error(w, "failure to write data file", http.StatusBadRequest)
 		return
 	}
 }

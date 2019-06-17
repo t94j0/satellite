@@ -19,7 +19,7 @@ import (
 type Path struct {
 	Path string `yaml:"-"`
 	// FullPath is the path of the file to host
-	FullPath string `yaml:"-"`
+	FullPath string `yaml:"-" json:"-"`
 	// NotServing does not serve the page when NotServing is true
 	NotServing bool `yaml:"not_serving,omitempty"`
 	// AddHeaders are a dict of headers to add to every request

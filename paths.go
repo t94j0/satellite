@@ -31,6 +31,11 @@ func NewPaths(base string) (*Paths, error) {
 	return ret, nil
 }
 
+// Add adds a new Path to the global paths list
+func (paths *Paths) Add(id string, path *Path) {
+	paths[id] = path
+}
+
 // Out returns the list as a non-pointer map
 func (paths *Paths) Out() map[string]Path {
 	retPaths := make(map[string]Path, 0)

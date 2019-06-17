@@ -47,6 +47,7 @@ func main() {
 	}()
 
 	server, err := NewServer(
+		serverPath,
 		listen,
 		keyPath,
 		certPath,

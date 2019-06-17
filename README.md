@@ -278,21 +278,35 @@ on_failure:
 
 ## Management API
 
-The management API can be reached on the path and with the IPs specific in the [service configuration](#configuration).
+The management API can be reached on the path and with the IPs specific in the [service configuration](#configuration). For these examples, I will assume the operator is using `/management` as the management path. Use JSON format for all POST requests.
 
-GET requests will return a list of paths and information about those paths.
+GET /management - List all IDs and information about those IDs
 
-POST requests can have the following options:
+POST /management/reset - Reset `times_served` and `not_serving` for target path
+
+| Key  | Description      |
+|------|------------------|
+| path | Path to reset    |
+
+```json
+{ "path": "/index.html" }
+```
+
+POST /management/new - Create new path with data. Warning: Users can arbitrarily write to the filesystem by using directory traversal on path.Path.
 
 | Key | Description |
 |-----|-------------|
-| path  | path to request |
-| reset | boolean. When `true`, the path is reset to `times_served` = 0 and `not_serving` = false |
-
-Example JSON body if one wished to reset path 1.
+| path | Info object to upload |
+| file | String with file data as base64 |
 
 ```json
-{ "path": "/index.html", "reset": true }
+{
+  "path": {
+    "Path": "/info/test.html",
+    "Serve": 1,
+  },
+  "file": "PGI+SGVsbG8hPC9iPgo="
+}
 ```
 
 ## TODO
