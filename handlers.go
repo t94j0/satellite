@@ -113,17 +113,22 @@ func (s Server) writeHeaders(w http.ResponseWriter, headers map[string]string) {
 	}
 }
 
-// matchHandler is the handler for if the file exists and the rules matched the
-// request. This means serve the target file
-func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
-	s.writeHeaders(w, path.AddHeadersSuccess)
-	s.writeHeaders(w, path.ContentHeaders())
+// render will render the target path no matter what
+func (s Server) render(w http.ResponseWriter, req *http.Request, path *Path) {
 	data, err := ioutil.ReadFile(path.FullPath)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	io.WriteString(w, string(data))
+}
+
+// matchHandler is the handler for if the file exists and the rules matched the
+// request. This means serve the target file
+func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
+	s.writeHeaders(w, path.AddHeadersSuccess)
+	s.writeHeaders(w, path.ContentHeaders())
+	s.render(w, req, path)
 	if path.ShouldRemove() {
 		path.Remove()
 	}
@@ -133,9 +138,20 @@ func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Pat
 // noMatchHandler is the handler used when the file exists, but the rules
 // determine the request does not match
 func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
-	// TODO: Write a failure handler
 	s.writeHeaders(w, path.AddHeadersFailure)
-	io.WriteString(w, "Errored\n")
+	if path.OnFailure.Redirect != "" {
+		http.Redirect(w, req, path.OnFailure.Redirect, 301)
+	} else if path.OnFailure.Render != "" {
+		newPath, found := paths.Match(path.OnFailure.Render)
+		if !found {
+			log.Println("Error: failure path not found")
+			io.WriteString(w, "Errored\n")
+			return
+		}
+		s.render(w, req, newPath)
+	} else {
+		io.WriteString(w, "Errored\n")
+	}
 }
 
 // doesNotExistHandler is 404

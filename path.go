@@ -60,6 +60,13 @@ type Path struct {
 		ScriptPath string `yaml:"script"`
 		Output     string `yaml:"output"`
 	} `yaml:"exec,omitempty"`
+	// OnFailure instructs the Path what to do when a failure occurs
+	OnFailure struct {
+		// Redirect will redirect the user with a 301 to a target address
+		Redirect string `yaml:"redirect"`
+		// Render will render the following path
+		Render string `yaml:"render"`
+	} `yaml:"on_failure"`
 }
 
 // NewPath parses a .info file in the base path directory

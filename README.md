@@ -257,6 +257,25 @@ Boolean to determine if the file should be served. This is mostly used by the DE
 not_serving: true
 ```
 
+
+### on_failure
+
+Specifies what happens when the request does not match the prerequisites. There are two options: redirection, available through `on_failure.redirect`, and rendering a web page, available through `on_failure.render`.
+
+#### Example: Redirection
+
+```yaml
+on_failure:
+  redirect: https://google.com
+```
+
+#### Example: Rendering
+
+```yaml
+on_failure:
+  redirect: /index.html
+```
+
 ## Management API
 
 The management API can be reached on the path and with the IPs specific in the [service configuration](#configuration).
