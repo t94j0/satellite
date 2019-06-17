@@ -17,10 +17,9 @@ import (
 
 // Path is an available path that can be accessed on the server
 type Path struct {
+	Path string `yaml:"-"`
 	// FullPath is the path of the file to host
 	FullPath string `yaml:"-"`
-	// ID of path
-	ID uint `yaml:"id"`
 	// NotServing does not serve the page when NotServing is true
 	NotServing bool `yaml:"not_serving,omitempty"`
 	// AddHeaders are a dict of headers to add to every request
@@ -55,9 +54,9 @@ type Path struct {
 		// FileName is the name of the file if Content.Type is attachment
 		FileName string `yaml:"file_name"`
 	} `yaml:"disposition,omitempty"`
-	// IDs of hits that need to happen before the current one will succeed
-	PrereqIDs []uint `yaml:"prereq,omitempty"`
-	Exec      struct {
+	// PrereqPaths path of hits that need to happen before the current one will succeed
+	PrereqPaths []string `yaml:"prereq,omitempty"`
+	Exec        struct {
 		ScriptPath string `yaml:"script"`
 		Output     string `yaml:"output"`
 	} `yaml:"exec,omitempty"`
@@ -253,15 +252,15 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 
 	// Prereq
 	filledPrereq := true
-	if len(f.PrereqIDs) != 0 {
-		filledPrereq = identifier.Match(targetHost, f.PrereqIDs)
+	if len(f.PrereqPaths) != 0 {
+		filledPrereq = identifier.Match(targetHost, f.PrereqPaths)
 	}
 
 	didSucceed := correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && filledPrereq && correctExec
 
 	if didSucceed {
 		f.TimesServed += 1
-		identifier.Hit(targetHost, f.ID)
+		identifier.Hit(targetHost, f.Path)
 		if err := f.Write(); err != nil {
 			return false, err
 		}

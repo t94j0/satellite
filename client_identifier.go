@@ -4,24 +4,28 @@ import (
 	"net"
 )
 
+// ClientID is a client identification struct
 type ClientID struct {
-	ids map[string][]uint
+	paths map[string][]string
 }
 
+// NewClientID creates a new ClientID object
 func NewClientID() *ClientID {
 	return &ClientID{
-		ids: make(map[string][]uint),
+		paths: make(map[string][]string),
 	}
 }
 
-func (c *ClientID) Hit(ip net.IP, id uint) {
+// Hit notifies ClientID that an IP hit a target
+func (c *ClientID) Hit(ip net.IP, path string) {
 	ipstr := ip.String()
-	c.ids[ipstr] = append(c.ids[ipstr], id)
+	c.paths[ipstr] = append(c.paths[ipstr], path)
 }
 
-func (c *ClientID) Match(ip net.IP, list []uint) bool {
+// Match asks ClientID if the target IP has succeeded in hitting the prereqs
+func (c *ClientID) Match(ip net.IP, list []string) bool {
 	ipstr := ip.String()
-	matchList, ok := c.ids[ipstr]
+	matchList, ok := c.paths[ipstr]
 	if !ok {
 		return false
 	}

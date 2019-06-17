@@ -184,8 +184,8 @@ func (s Server) managementGetHandler(w http.ResponseWriter, req *http.Request) {
 
 func (s Server) managementPostHandler(w http.ResponseWriter, req *http.Request) {
 	type Management struct {
-		ID    uint `json:"id"`
-		Reset bool `json:"reset"`
+		Path  string `json:"path"`
+		Reset bool   `json:"reset"`
 	}
 	var mgmt Management
 
@@ -200,7 +200,7 @@ func (s Server) managementPostHandler(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	path := paths.GetID(mgmt.ID)
+	path, _ := paths.Match(mgmt.Path)
 	if mgmt.Reset {
 		path.NotServing = false
 		path.TimesServed = 0

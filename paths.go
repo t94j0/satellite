@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/apcera/util/iprange"
-	"github.com/t94j0/array"
 )
 
 // Paths is the compilation of parsed paths
@@ -39,15 +38,6 @@ func (paths *Paths) Out() map[string]Path {
 		retPaths[k] = *path
 	}
 	return retPaths
-}
-
-func (paths *Paths) GetID(id uint) *Path {
-	for _, path := range paths.list {
-		if path.ID == id {
-			return path
-		}
-	}
-	return nil
 }
 
 // Match matches a page given a URI. It returns the specified Path and a boolean
@@ -84,63 +74,27 @@ func (paths *Paths) Remove(path *Path) {
 	// TODO: Put removed Path into the `done` directory
 }
 
-type ErrID struct {
-	id  uint
-	err string
-}
-
-func (i *ErrID) Error() string {
-	return fmt.Sprintf("ID %d %s", i.id, i.err)
-}
-
-type ErrIPRange struct {
-	id      uint
-	ipRange string
-}
-
-func (i *ErrIPRange) Error() string {
-	return fmt.Sprintf("IP range for ID %d has an invalid IP range of %s", i.id, i.ipRange)
-}
-
-type ErrPathNotExist struct {
-	id uint
-}
-
-func (i *ErrPathNotExist) Error() string {
-	return fmt.Sprintf("File for ID %d does not exist", i.id)
-}
-
-type ErrIDNotExist struct {
+type ErrPath struct {
 	path string
+	err  string
 }
 
-func (i *ErrIDNotExist) Error() string {
-	return fmt.Sprintf("No ID exists for file %s", i.path)
+func (i *ErrPath) Error() string {
+	return fmt.Sprintf("%s %s", i.path, i.err)
 }
 
 func (paths *Paths) verify() error {
-	checkedIDs := make([]uint, 0)
 	for _, path := range paths.list {
-		// Check ID
-		if path.ID == 0 {
-			return &ErrIDNotExist{path.FullPath}
-		}
-		// Check ID parameters
-		if array.In(path.ID, checkedIDs) {
-			return &ErrID{path.ID, "used multiple times"}
-		}
-		checkedIDs = append(checkedIDs, path.ID)
-
 		// Check Authorized IPs
 		for _, r := range path.AuthorizedIPRange {
 			if _, err := iprange.ParseIPRange(r); err != nil {
-				return &ErrIPRange{path.ID, r}
+				return &ErrPath{path.Path, "has an invalid IP range: " + r}
 			}
 		}
 
 		// Check path of file exists
 		if _, err := os.Stat(path.FullPath); os.IsNotExist(err) {
-			return &ErrPathNotExist{path.ID}
+			return &ErrPath{path.Path, "does not have a source file associated"}
 		}
 	}
 	return nil
@@ -166,6 +120,7 @@ func (paths *Paths) Reload() error {
 		fullPath := strings.TrimSuffix(oPath, ".info")
 		requestPath := strings.TrimPrefix(fullPath, paths.base)
 		tmpPath.FullPath = fullPath
+		tmpPath.Path = requestPath
 
 		paths.list[requestPath] = tmpPath
 		return nil

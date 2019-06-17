@@ -61,20 +61,8 @@ ssl:
 
 In the `server_root` directory chosen in the [configuration](#configuration) section, place any files you want to serve as a payload. Along with those files, create a `<payload_name>.info` file. For example, if you want to host a payload called `index.html`, make `index.html.info` as well. .info files are YML which contain filtering information for the payload you are hosting.
 
-The only required field in a .info file is the `id` field. Every payload hosted must have a unique, greater-than-zero, integer value `id` field.
-
 Here are all the filtering options for a file.
 
-
-### id
-
-ID of payload
-
-#### Example
-
-```yaml
-id: 1
-```
 
 ### serve
 
@@ -85,7 +73,6 @@ Number of times to serve file
 This will serve the file once before not allowing the file to be accessed anymore
 
 ```yaml
-id: 1
 serve: 1
 ```
 
@@ -97,7 +84,6 @@ List of User Agent strings to allow
 
 
 ```yaml
-id: 1
 authorized_useragents:
   - Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1
   - Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254
@@ -110,7 +96,6 @@ List of IPs or IP ranges who are allowed to view a file
 #### Example
 
 ```yaml
-id: 1
 authorized_iprange:
   - 192.168.0.1
   - 192.168.10.1/24
@@ -123,7 +108,6 @@ Authorized HTTP methods
 #### Example
 
 ```yaml
-id: 1
 authorized_methods:
   - GET
   - PUT
@@ -136,7 +120,6 @@ Dictionary of headers which must be present
 #### Example
 
 ```yaml
-id: 1
 authorized_headers:
   Hacked: yes
 ```
@@ -157,7 +140,6 @@ Authorized JA3 hashes to access the file. More information about JA3 can be foun
 #### Example
 
 ```yaml
-id: 1
 authorized_ja3:
   - e7d705a3286e19ea42f587b344ee6865
   - 6734f37431670b3ab4292b8f60f29984
@@ -170,14 +152,13 @@ Blacklisted IPs from accessing a payload
 #### Example
 
 ```yaml
-id: 1
 blacklist_iprange:
   - 94.130.90.152
 ```
 
 ### prereq
 
-Prerequisite IDs which must be hit, in order, before the payload will be served.
+Prerequisite paths which must be hit, in order, before the payload will be served.
 
 #### Example
 
@@ -186,24 +167,21 @@ In this case, when `/first` is requested, it is automatically served. When `/sec
 first.info
 
 ```yaml
-id: 1
 ```
 
 second.info
 
 ```yaml
-id: 2
 prereq:
-  - 1
+  - /index
 ```
 
 payload.info
 
 ```yaml
-id: 3
 prereq:
-  - 1
-  - 2
+  - /first
+  - /second
 ```
 
 ### content_type
@@ -213,7 +191,6 @@ Sets the Content-Type for the payload being served. More information about the C
 #### Example
 
 ```yaml
-id: 1
 content_type: application/msword
 ```
 
@@ -225,7 +202,6 @@ Sets Content-Disposition header for the payload. There are two sub-keys: `type` 
 
 
 ```yaml
-id: 1
 disposition:
   type: attachment
   file_name: file.docx
@@ -239,7 +215,6 @@ Executes a program, gives the HTTP request to stdin, and checks stdout against a
 #### Example
 
 ```yaml
-id: 1
 exec:
   script: /home/user/test.py
   output: success
@@ -253,7 +228,6 @@ Adds the header to all HTTP responses.
 #### Example
 
 ```yaml
-id: 1
 add_headers:
   Accept-Encoding: gzip
 ```
@@ -280,7 +254,6 @@ Boolean to determine if the file should be served. This is mostly used by the DE
 #### Example
 
 ```yaml
-id: 1
 not_serving: true
 ```
 
@@ -294,18 +267,19 @@ POST requests can have the following options:
 
 | Key | Description |
 |-----|-------------|
-| id  | ID of path to request |
-| reset | boolean. When `true`, the ID is reset to `times_served` = 0 and `not_serving` = false |
+| path  | path to request |
+| reset | boolean. When `true`, the path is reset to `times_served` = 0 and `not_serving` = false |
 
-Example JSON body if one wished to reset ID 1.
+Example JSON body if one wished to reset path 1.
 
 ```json
-{ "id": 1, "reset": true }
+{ "path": "/index.html", "reset": true }
 ```
 
 ## TODO
 
-* Move to paths instead of IDs
+* Specific redirection per IP
+* Timeout on ClientID
 
 
 ## Open Source Projects Used:
