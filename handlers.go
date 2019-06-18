@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+        "path/filepath"
+	"encoding/base64"
+        "gopkg.in/yaml.v2"
 
 	"github.com/apcera/util/iprange"
 	"github.com/t94j0/ja3-server/crypto/tls"
@@ -182,7 +185,7 @@ func (s Server) managementEnabled(req *http.Request) (bool, error) {
 		return false, err
 	}
 	targetHost := getHost(req)
-	return mgmtRange.Contains(targetHost), true
+	return mgmtRange.Contains(targetHost), nil
 }
 
 func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {
@@ -213,14 +216,14 @@ func (s Server) resetHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	path, _ := paths.Match(mgmt.Path)
-	if mgmt.Reset {
-		path.NotServing = false
-		path.TimesServed = 0
-		if err := path.Write(); err != nil {
-			log.Println(err)
-			s.doesNotExistHandler(w, req)
-			return
-		}
+
+	path.NotServing = false
+	path.TimesServed = 0
+
+	if err := path.Write(); err != nil {
+		log.Println(err)
+		s.doesNotExistHandler(w, req)
+		return
 	}
 }
 
@@ -247,7 +250,7 @@ func (s Server) uploadHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	path := filepath.Join(s.serverPath, newPath.Path)
+	path := filepath.Join(s.serverPath, newPath.Path.Path)
 
 	// Write data file
 	if err := ioutil.WriteFile(path, fileData, 0644); err != nil {

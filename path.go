@@ -75,7 +75,7 @@ func NewPath(infoPath string) (*Path, error) {
 
 	data, err := ioutil.ReadFile(infoPath)
 	if err != nil {
-		return &infoPath, err
+		return &newInfo, err
 	}
 
 	if err := yaml.Unmarshal(data, &newInfo); err != nil {
