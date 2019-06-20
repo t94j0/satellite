@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -27,13 +27,18 @@ func main() {
 	notFoundRedirect := config.GetString("not_found.redirect")
 	notFoundRender := config.GetString("not_found.render")
 	indexPath := config.GetString("index")
+	redirectHTTP := config.GetBool("redirect_http")
 
-	log.Printf("Using config file %s", config.ConfigFileUsed())
-	log.Printf("Using server path %s", serverPath)
+	log.Infof("Using config file %s", config.ConfigFileUsed())
+	log.Infof("Using server path %s", serverPath)
 
 	paths, err = NewPaths(serverPath)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if notFoundRedirect == "" && notFoundRender == "" {
+		log.Warn("Use not_found handlers for opsec")
 	}
 
 	log.Printf("Loaded %d path(s)", paths.Len())
@@ -57,12 +62,13 @@ func main() {
 		indexPath,
 		notFoundRedirect,
 		notFoundRender,
+		redirectHTTP,
 	)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "server configuration error"))
 	}
 
-	log.Printf("Listening on port %s", config.GetString("listen"))
+	log.Infof("Listening HTTPS on port %s", config.GetString("listen"))
 	if err := server.Start(); err != nil {
 		log.Fatal(err)
 	}

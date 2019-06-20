@@ -66,7 +66,7 @@ type Path struct {
 		Redirect string `yaml:"redirect"`
 		// Render will render the following path
 		Render string `yaml:"render"`
-	} `yaml:"on_failure"`
+	} `yaml:"on_failure,omitempty"`
 }
 
 // NewPath parses a .info file in the base path directory

@@ -1,19 +1,19 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
-        "path/filepath"
-	"encoding/base64"
-        "gopkg.in/yaml.v2"
+	"path/filepath"
 
 	"github.com/apcera/util/iprange"
+	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/ja3-server/crypto/tls"
 	"github.com/t94j0/ja3-server/net/http"
+	"gopkg.in/yaml.v2"
 )
 
 // Server is used to serve HTTP(S)
@@ -28,6 +28,7 @@ type Server struct {
 	indexPath        string
 	notFoundRedirect string
 	notFoundRender   string
+	redirectHTTP     bool
 	identifier       *ClientID
 }
 
@@ -35,7 +36,7 @@ type Server struct {
 var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
 
 // NewServer creates a new Server object
-func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string) (Server, error) {
+func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string, redirectHTTP bool) (Server, error) {
 	if notFoundRedirect != "" && notFoundRender != "" {
 		return Server{}, ErrNotFoundConfig
 	}
@@ -50,13 +51,23 @@ func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, 
 		indexPath:        indexPath,
 		notFoundRedirect: notFoundRedirect,
 		notFoundRender:   notFoundRender,
+		redirectHTTP:     redirectHTTP,
 		identifier:       NewClientID(),
 	}, nil
 }
 
 // Start makes the server begin listening
 func (s Server) Start() error {
-	// HTTP handlers
+	// HTTP
+	if s.redirectHTTP {
+		go func() {
+			if err := s.createHTTPRedirect(); err != nil {
+				log.Error(err)
+			}
+		}()
+	}
+
+	// HTTPS
 	mux := http.NewServeMux()
 	if s.managementPath != "" {
 		mux.HandleFunc(s.managementPath, s.managementHandler)
@@ -66,7 +77,6 @@ func (s Server) Start() error {
 	mux.HandleFunc("/", s.handler)
 
 	server := &http.Server{Addr: s.port, Handler: mux}
-
 	ln, err := net.Listen("tcp", s.port)
 	if err != nil {
 		return err
@@ -77,9 +87,14 @@ func (s Server) Start() error {
 		return err
 	}
 	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
-
 	tlsListener := tls.NewListener(ln, &tlsConfig)
 	return server.Serve(tlsListener)
+}
+
+// createHTTPRedirect creates a HTTP listener to redirect to HTTPS
+func (s Server) createHTTPRedirect() error {
+	log.Infof("HTTP redirection not implemented")
+	return nil
 }
 
 // handler manages all path handling. It redirects the task of handling based on
@@ -158,7 +173,7 @@ func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *P
 		}
 		s.render(w, req, newPath)
 	} else {
-		io.WriteString(w, "404-like\n")
+		s.doesNotExistHandler(w, req)
 	}
 }
 
