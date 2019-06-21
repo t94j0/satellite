@@ -23,7 +23,7 @@ DEITYSHADOW is an web payload hosting service which filters requests to ensure t
 DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW/config.yml`, and `/etc/DEITYSHADOW/config.yml` for service configuration.
 
 | Key                | Configuration |
-|--------------------|---------------|
+|:-------------------|:--------------|
 | server_root        | Server root directory |
 | listen             | IP:port combination to listen on. If this IP is removed, the service will listen on 0.0.0.0 |
 | server_header      | Server header to give clients when requesting a page. More information can be found [here][server header] |
