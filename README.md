@@ -34,6 +34,7 @@ DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW
 | index              | Index path for when a user requests `/` |
 | not_found.redirect | Redirect to give page when a page isn't found |
 | not_found.render   | Path of file to render when a page isn't found |
+| log_level          | Minimum log level. Options are `panic`, `fatal`, `error`, `warn`, `info`, `debug`, `trace` |
 
 
 An example configuration is shown below.

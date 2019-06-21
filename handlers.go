@@ -95,7 +95,7 @@ func (s Server) Start() error {
 
 // createHTTPRedirect creates a HTTP listener to redirect to HTTPS
 func (s Server) createHTTPRedirect() error {
-	log.Infof("HTTP redirection not implemented")
+	log.Debug("HTTP redirection not implemented")
 	return nil
 }
 
@@ -103,6 +103,13 @@ func (s Server) createHTTPRedirect() error {
 // if the file exist, the file should be hosted (based on Path rules), and if
 // the file should not be hosted
 func (s Server) handler(w http.ResponseWriter, req *http.Request) {
+	log.WithFields(log.Fields{
+		"method":      req.Method,
+		"host":        req.Host,
+		"remote_addr": req.RemoteAddr,
+		"req_uri":     req.RequestURI,
+	}).Info("request")
+
 	if req.URL.Path == "/" && s.indexPath != "" {
 		req.URL.Path = s.indexPath
 	}

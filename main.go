@@ -12,6 +12,8 @@ const ProjectName string = "DEITYSHADOW"
 var paths *Paths
 
 func main() {
+	log.SetLevel(log.DebugLevel)
+
 	config, err := Config()
 	if err != nil {
 		log.Fatal(err)
@@ -28,9 +30,23 @@ func main() {
 	notFoundRender := config.GetString("not_found.render")
 	indexPath := config.GetString("index")
 	redirectHTTP := config.GetBool("redirect_http")
+	logLevel := config.GetString("log_level")
 
-	log.Infof("Using config file %s", config.ConfigFileUsed())
-	log.Infof("Using server path %s", serverPath)
+	logOptions := map[string]log.Level{
+		"":      log.DebugLevel,
+		"panic": log.PanicLevel,
+		"fatal": log.FatalLevel,
+		"error": log.ErrorLevel,
+		"warn":  log.WarnLevel,
+		"info":  log.InfoLevel,
+		"debug": log.DebugLevel,
+		"trace": log.TraceLevel,
+	}
+
+	log.SetLevel(logOptions[logLevel])
+
+	log.Debugf("Using config file %s", config.ConfigFileUsed())
+	log.Debugf("Using server path %s", serverPath)
 
 	paths, err = NewPaths(serverPath)
 	if err != nil {
@@ -41,7 +57,7 @@ func main() {
 		log.Warn("Use not_found handlers for opsec")
 	}
 
-	log.Printf("Loaded %d path(s)", paths.Len())
+	log.Debugf("Loaded %d path(s)", paths.Len())
 
 	go func() {
 		if err := createWatcher(serverPath, "1s", func() error {
