@@ -67,6 +67,7 @@ type Path struct {
 		// Render will render the following path
 		Render string `yaml:"render"`
 	} `yaml:"on_failure,omitempty"`
+	ProxyHost string `yaml:"proxy,omitempty"`
 }
 
 // NewPath parses a .info file in the base path directory

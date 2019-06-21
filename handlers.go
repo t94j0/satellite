@@ -7,12 +7,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"path/filepath"
 
 	"github.com/apcera/util/iprange"
 	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/ja3-server/crypto/tls"
 	"github.com/t94j0/ja3-server/net/http"
+	"github.com/t94j0/ja3-server/net/http/httputil"
 	"gopkg.in/yaml.v2"
 )
 
@@ -138,12 +140,20 @@ func (s Server) writeHeaders(w http.ResponseWriter, headers map[string]string) {
 
 // render will render the target path no matter what
 func (s Server) render(w http.ResponseWriter, req *http.Request, path *Path) {
-	data, err := ioutil.ReadFile(path.FullPath)
-	if err != nil {
-		log.Println(err)
-		return
+	if path.ProxyHost != "" {
+		proxyURL, err := url.Parse(path.ProxyHost)
+		if err != nil {
+			log.Error(err)
+		}
+		httputil.NewSingleHostReverseProxy(proxyURL).ServeHTTP(w, req)
+	} else {
+		data, err := ioutil.ReadFile(path.FullPath)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		io.WriteString(w, string(data))
 	}
-	io.WriteString(w, string(data))
 }
 
 // matchHandler is the handler for if the file exists and the rules matched the

@@ -99,7 +99,7 @@ func (paths *Paths) verify() error {
 		}
 
 		// Check path of file exists
-		if _, err := os.Stat(path.FullPath); os.IsNotExist(err) {
+		if _, err := os.Stat(path.FullPath); path.ProxyHost == "" && os.IsNotExist(err) {
 			return &ErrPath{path.Path, "does not have a source file associated"}
 		}
 	}
