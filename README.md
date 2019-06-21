@@ -278,6 +278,19 @@ on_failure:
   redirect: /index.html
 ```
 
+
+### proxy
+
+Proxy route to a different address
+
+#### Example
+
+```yaml
+proxy: http://localhost:2222
+```
+
+
+
 ## Management API
 
 The management API can be reached on the path and with the IPs specific in the [service configuration](#configuration). For these examples, I will assume the operator is using `/management` as the management path. Use JSON format for all POST requests.
