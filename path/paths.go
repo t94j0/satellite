@@ -30,6 +30,20 @@ func New(base string) (*Paths, error) {
 	return ret, nil
 }
 
+// AddProxyList is a flat list of proxies to add in YAML format
+func (paths *Paths) AddProxyList(path string) error {
+	pathArr, err := NewPathArray(path)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range pathArr {
+		paths.list[p.Path] = p
+	}
+
+	return nil
+}
+
 // Add adds a new Path to the global paths list
 func (paths *Paths) Add(id string, path *Path) {
 	paths.list[id] = path
@@ -65,7 +79,6 @@ func (paths *Paths) Remove(path *Path) {
 			break
 		}
 	}
-	// TODO: Put removed Path into the `done` directory
 }
 
 // ErrPath is errors describing the path
@@ -96,6 +109,7 @@ func (paths *Paths) verify() error {
 }
 
 // Reload refreshes the list of paths internally to Paths
+// TODO: Add proxy paths to this list
 func (paths *Paths) Reload() error {
 	paths.list = make(map[string]*Path)
 	if err := filepath.Walk(paths.base, func(oPath string, info os.FileInfo, err error) error {
@@ -107,7 +121,7 @@ func (paths *Paths) Reload() error {
 			return nil
 		}
 
-		tmpPath, err := NewPathYaml(oPath)
+		tmpPath, err := NewPath(oPath)
 		if err != nil {
 			return err
 		}

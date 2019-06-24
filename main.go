@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
@@ -48,17 +50,26 @@ func main() {
 	log.Debugf("Using config file %s", config.ConfigFileUsed())
 	log.Debugf("Using server path %s", serverPath)
 
+	// Parse .info files
 	paths, err := path.New(serverPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Parse proxy.yml
+	proxyPath := filepath.Join(serverPath, "proxy.yml")
+	if err := paths.AddProxyList(proxyPath); err != nil {
+		log.Debug("No proxy path found")
+	}
+
+	// Warn user about redirection opsec
 	if notFoundRedirect == "" && notFoundRender == "" {
 		log.Warn("Use not_found handlers for opsec")
 	}
 
 	log.Debugf("Loaded %d path(s)", paths.Len())
 
+	// Listen for when files in serverPath change
 	go func() {
 		if err := createWatcher(serverPath, "1s", func() error {
 			return paths.Reload()
@@ -67,6 +78,7 @@ func main() {
 		}
 	}()
 
+	// Create server and listen
 	server, err := handler.New(
 		paths,
 		serverPath,

@@ -17,7 +17,7 @@ import (
 
 // Path is an available path that can be accessed on the server
 type Path struct {
-	Path string `yaml:"-"`
+	Path string `yaml:"path,omitempty"`
 	// FullPath is the path of the file to host
 	FullPath string `yaml:"-" json:"-"`
 	// NotServing does not serve the page when NotServing is true
@@ -70,18 +70,18 @@ type Path struct {
 	ProxyHost string `yaml:"proxy,omitempty"`
 }
 
-// NewPathYaml parses a yaml file path to create a new Path object
-func NewPathYaml(path string) (*Path, error) {
+// NewPath parses a yaml file path to create a new Path object
+func NewPath(path string) (*Path, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewPathYamlData(data)
+	return NewPathData(data)
 }
 
-// NewPathYamlData creates a Path object from yaml data
-func NewPathYamlData(data []byte) (*Path, error) {
+// NewPathData creates a Path object from yaml data
+func NewPathData(data []byte) (*Path, error) {
 	var newInfo Path
 
 	if err := yaml.Unmarshal(data, &newInfo); err != nil {
@@ -89,6 +89,27 @@ func NewPathYamlData(data []byte) (*Path, error) {
 	}
 
 	return &newInfo, nil
+}
+
+// NewPathArray
+func NewPathArray(path string) ([]*Path, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPathArrayData(data)
+}
+
+// NewPathArrayData
+func NewPathArrayData(data []byte) ([]*Path, error) {
+	var newPathArr []*Path
+
+	if err := yaml.Unmarshal(data, &newPathArr); err != nil {
+		return nil, err
+	}
+
+	return newPathArr, nil
 }
 
 // ContentHeaders sets the Content-Type and Content-Disposition headers.
@@ -127,10 +148,19 @@ func (f *Path) Remove() error {
 
 // Write Info path to file
 func (f *Path) Write() error {
+	// Don't write proxy hosts to a file
+	if f.ProxyHost != "" {
+		return nil
+	}
+
+	// Path exists, doesn't need to be written
+	f.Path = ""
+
 	out, err := yaml.Marshal(f)
 	if err != nil {
 		return err
 	}
+
 	return ioutil.WriteFile(f.FullPath+".info", out, 0644)
 }
 
