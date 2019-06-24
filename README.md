@@ -1,6 +1,6 @@
-# DEITYSHADOW
+# satellite
 
-DEITYSHADOW is an web payload hosting service which filters requests to ensure the correct target is getting a payload. This can also be a useful service for hosting files that should be only accessed in very specific circumstances.
+Satellite is an web payload hosting service which filters requests to ensure the correct target is getting a payload. This can also be a useful service for hosting files that should be only accessed in very specific circumstances.
 
 
 ## Installation
@@ -12,15 +12,15 @@ DEITYSHADOW is an web payload hosting service which filters requests to ensure t
 
 2. Build Project - Must have go environment set up
 
-`go get -u github.com/t94j0/DEITYSHADOW`
+`go get -u github.com/t94j0/satellite`
 
 3. Run Project
 
-`DEITYSHADOW`
+`satellite`
 
 ## Configuration
 
-DEITYSHADOW looks in `$HOME/.config/DEITYSHADOW/config.yml`, `$HOME/.DEITYSHADOW/config.yml`, and `/etc/DEITYSHADOW/config.yml` for service configuration.
+Satellite looks in `$HOME/.config/satellite/config.yml`, `$HOME/.satellite/config.yml`, and `/etc/satellite/config.yml` for service configuration.
 
 | Key                | Configuration |
 |:-------------------|:--------------|
@@ -55,8 +55,8 @@ management:
   path: /management
 
 ssl:
-  key: /home/<user>/.config/DEITYSHADOW/keys/key.unencrypted.pem
-  cert: /home/<user>/.config/DEITYSHADOW/keys/cert.pem
+  key: /home/<user>/.config/satellite/keys/key.unencrypted.pem
+  cert: /home/<user>/.config/satellite/keys/cert.pem
 ```
 
 
@@ -247,12 +247,12 @@ Adds the header to an HTTP response if the request was denied
 
 ### times_served
 
-Number of times a payload has been accessed. This variable is for DEITYSHADOW to do record-keeping.
+Number of times a payload has been accessed. This variable is for satellite to do record-keeping.
 
 
 ### not_serving
 
-Boolean to determine if the file should be served. This is mostly used by the DEITYSHADOW server for record-keeping, but can be set manually to now allow a payload to be hosted.
+Boolean to determine if the file should be served. This is mostly used by the satellite server for record-keeping, but can be set manually to now allow a payload to be hosted.
 
 #### Example
 

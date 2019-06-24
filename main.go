@@ -7,7 +7,7 @@ import (
 )
 
 // ProjectName is the current project name
-const ProjectName string = "DEITYSHADOW"
+const ProjectName string = "satellite"
 
 var paths *Paths
 

@@ -1,4 +1,4 @@
-module github.com/t94j0/DEITYSHADOW
+module github.com/t94j0/satellite
 
 go 1.12
 
