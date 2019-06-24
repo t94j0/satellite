@@ -7,8 +7,10 @@ Satellite is an web payload hosting service which filters requests to ensure the
 
 1. Create SSL keys
 
-`openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365`
-`openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>`
+```
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365
+openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>
+```
 
 2. Build Project - Must have go environment set up
 
