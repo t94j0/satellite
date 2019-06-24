@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"encoding/base64"
@@ -15,11 +15,14 @@ import (
 	"github.com/t94j0/ja3-server/crypto/tls"
 	"github.com/t94j0/ja3-server/net/http"
 	"github.com/t94j0/ja3-server/net/http/httputil"
+	"github.com/t94j0/satellite/path"
+	"github.com/t94j0/satellite/util"
 	"gopkg.in/yaml.v2"
 )
 
 // Server is used to serve HTTP(S)
 type Server struct {
+	paths            *path.Paths
 	serverPath       string
 	port             string
 	keyPath          string
@@ -31,18 +34,19 @@ type Server struct {
 	notFoundRedirect string
 	notFoundRender   string
 	redirectHTTP     bool
-	identifier       *ClientID
+	identifier       *path.ClientID
 }
 
 // ErrNotFoundConfig is an error when both redirection options are present
 var ErrNotFoundConfig = errors.New("both not_found redirect and render cannot be set at the same time")
 
 // NewServer creates a new Server object
-func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string, redirectHTTP bool) (Server, error) {
+func New(paths *path.Paths, serverPath, port, keyPath, certPath, serverHeader, managementIP, managementPath, indexPath, notFoundRedirect, notFoundRender string, redirectHTTP bool) (Server, error) {
 	if notFoundRedirect != "" && notFoundRender != "" {
 		return Server{}, ErrNotFoundConfig
 	}
 	return Server{
+		paths:            paths,
 		serverPath:       serverPath,
 		port:             port,
 		keyPath:          keyPath,
@@ -54,7 +58,7 @@ func NewServer(serverPath, port, keyPath, certPath, serverHeader, managementIP, 
 		notFoundRedirect: notFoundRedirect,
 		notFoundRender:   notFoundRender,
 		redirectHTTP:     redirectHTTP,
-		identifier:       NewClientID(),
+		identifier:       path.NewClientID(),
 	}, nil
 }
 
@@ -114,7 +118,7 @@ func (s Server) handler(w http.ResponseWriter, req *http.Request) {
 		req.URL.Path = s.indexPath
 	}
 
-	path, exists := paths.Match(req.URL.Path)
+	path, exists := s.paths.Match(req.URL.Path)
 
 	if s.serverHeader != "" {
 		w.Header().Add("Server", s.serverHeader)
@@ -146,7 +150,7 @@ func (s Server) writeHeaders(w http.ResponseWriter, headers map[string]string) {
 }
 
 // render will render the target path no matter what
-func (s Server) render(w http.ResponseWriter, req *http.Request, path *Path) {
+func (s Server) render(w http.ResponseWriter, req *http.Request, path *path.Path) {
 	if path.ProxyHost != "" {
 		proxyURL, err := url.Parse(path.ProxyHost)
 		if err != nil {
@@ -165,7 +169,7 @@ func (s Server) render(w http.ResponseWriter, req *http.Request, path *Path) {
 
 // matchHandler is the handler for if the file exists and the rules matched the
 // request. This means serve the target file
-func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
+func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *path.Path) {
 	s.writeHeaders(w, path.AddHeadersSuccess)
 	s.writeHeaders(w, path.ContentHeaders())
 	s.render(w, req, path)
@@ -177,12 +181,12 @@ func (s Server) matchHandler(w http.ResponseWriter, req *http.Request, path *Pat
 
 // noMatchHandler is the handler used when the file exists, but the rules
 // determine the request does not match
-func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *Path) {
+func (s Server) noMatchHandler(w http.ResponseWriter, req *http.Request, path *path.Path) {
 	s.writeHeaders(w, path.AddHeadersFailure)
 	if path.OnFailure.Redirect != "" {
 		http.Redirect(w, req, path.OnFailure.Redirect, 301)
 	} else if path.OnFailure.Render != "" {
-		newPath, found := paths.Match(path.OnFailure.Render)
+		newPath, found := s.paths.Match(path.OnFailure.Render)
 		if !found {
 			log.Println("Error: failure path not found")
 			io.WriteString(w, "Errored\n")
@@ -199,7 +203,7 @@ func (s Server) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
 	if s.notFoundRedirect != "" {
 		http.Redirect(w, req, s.notFoundRedirect, 301)
 	} else if s.notFoundRender != "" {
-		path, found := paths.Match(s.notFoundRender)
+		path, found := s.paths.Match(s.notFoundRender)
 		if !found {
 			log.Println("Error: not_found render page not found")
 			return
@@ -216,12 +220,12 @@ func (s Server) managementEnabled(req *http.Request) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	targetHost := getHost(req)
+	targetHost := util.GetHost(req)
 	return mgmtRange.Contains(targetHost), nil
 }
 
 func (s Server) managementHandler(w http.ResponseWriter, req *http.Request) {
-	outPaths := paths.Out()
+	outPaths := s.paths.Out()
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(outPaths); err != nil {
 		log.Println(err)
@@ -247,7 +251,7 @@ func (s Server) resetHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	path, _ := paths.Match(mgmt.Path)
+	path, _ := s.paths.Match(mgmt.Path)
 
 	path.NotServing = false
 	path.TimesServed = 0
@@ -261,8 +265,8 @@ func (s Server) resetHandler(w http.ResponseWriter, req *http.Request) {
 
 func (s Server) uploadHandler(w http.ResponseWriter, req *http.Request) {
 	type Body struct {
-		Path Path   `json:"path"`
-		File string `json:"file"`
+		Path path.Path `json:"path"`
+		File string    `json:"file"`
 	}
 
 	var newPath Body

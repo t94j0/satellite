@@ -1,17 +1,17 @@
-package main
+package path
 
 import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os/exec"
 	"strings"
 
 	"github.com/apcera/util/iprange"
 	"github.com/t94j0/ja3-server/net/http"
 	"github.com/t94j0/ja3-server/net/http/httputil"
+	"github.com/t94j0/satellite/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,14 +70,19 @@ type Path struct {
 	ProxyHost string `yaml:"proxy,omitempty"`
 }
 
-// NewPath parses a .info file in the base path directory
-func NewPath(infoPath string) (*Path, error) {
-	var newInfo Path
-
-	data, err := ioutil.ReadFile(infoPath)
+// NewPathYaml parses a yaml file path to create a new Path object
+func NewPathYaml(path string) (*Path, error) {
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return &newInfo, err
+		return nil, err
 	}
+
+	return NewPathYamlData(data)
+}
+
+// NewPathYaml creates a Path object from yaml data
+func NewPathYamlData(data []byte) (*Path, error) {
+	var newInfo Path
 
 	if err := yaml.Unmarshal(data, &newInfo); err != nil {
 		return &newInfo, err
@@ -103,16 +108,6 @@ func (f *Path) ContentHeaders() map[string]string {
 	}
 
 	return headers
-}
-
-func getHost(req *http.Request) net.IP {
-	inp := req.RemoteAddr
-	split := strings.Split(inp, ":")
-	filter := split[:len(split)-1]
-	full := strings.Join(filter, ":")
-	trimmedr := strings.TrimRight(full, "]")
-	trimmed := strings.TrimLeft(trimmedr, "[")
-	return net.ParseIP(trimmed)
 }
 
 // ShouldRemove determines if a path should be removed because the number of
@@ -160,7 +155,7 @@ func (f *Path) ShouldHost(req *http.Request, identifier *ClientID) (bool, error)
 	}
 
 	// IP Range
-	targetHost := getHost(req)
+	targetHost := util.GetHost(req)
 	correctRange := false
 	if len(f.AuthorizedIPRange) != 0 {
 		for _, r := range f.AuthorizedIPRange {

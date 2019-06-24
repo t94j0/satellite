@@ -1,4 +1,4 @@
-package main
+package path
 
 import (
 	"fmt"
@@ -16,18 +16,17 @@ type Paths struct {
 }
 
 // NewPaths creates a new Paths variable from the specified base path
-func NewPaths(base string) (*Paths, error) {
+func New(base string) (*Paths, error) {
 	list := make(map[string]*Path)
 	ret := &Paths{
 		base: base,
 		list: list,
 	}
+
 	if err := ret.Reload(); err != nil {
 		return ret, err
 	}
-	if err := ret.createCompleted(); err != nil {
-		return ret, err
-	}
+
 	return ret, nil
 }
 
@@ -55,16 +54,6 @@ func (paths *Paths) Match(URI string) (*Path, bool) {
 // Len returns the number of successfully parsed paths
 func (paths *Paths) Len() int {
 	return len(paths.list)
-}
-
-func (paths *Paths) createCompleted() error {
-	name := filepath.Join(paths.base, "done")
-	if _, err := os.Stat(name); !os.IsNotExist(err) {
-		// The directory already exists. Nothing to be done
-		return nil
-	}
-
-	return os.Mkdir(name, os.FileMode(0777))
 }
 
 // Remove removes the specified path from the list of paths
@@ -118,7 +107,7 @@ func (paths *Paths) Reload() error {
 			return nil
 		}
 
-		tmpPath, err := NewPath(oPath)
+		tmpPath, err := NewPathYaml(oPath)
 		if err != nil {
 			return err
 		}

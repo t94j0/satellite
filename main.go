@@ -4,12 +4,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
+	"github.com/t94j0/satellite/handler"
+	"github.com/t94j0/satellite/path"
 )
 
 // ProjectName is the current project name
 const ProjectName string = "satellite"
-
-var paths *Paths
 
 func main() {
 	log.SetLevel(log.DebugLevel)
@@ -48,7 +48,7 @@ func main() {
 	log.Debugf("Using config file %s", config.ConfigFileUsed())
 	log.Debugf("Using server path %s", serverPath)
 
-	paths, err = NewPaths(serverPath)
+	paths, err := path.New(serverPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,7 +67,8 @@ func main() {
 		}
 	}()
 
-	server, err := NewServer(
+	server, err := handler.New(
+		paths,
 		serverPath,
 		listen,
 		keyPath,
