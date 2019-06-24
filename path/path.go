@@ -80,7 +80,7 @@ func NewPathYaml(path string) (*Path, error) {
 	return NewPathYamlData(data)
 }
 
-// NewPathYaml creates a Path object from yaml data
+// NewPathYamlData creates a Path object from yaml data
 func NewPathYamlData(data []byte) (*Path, error) {
 	var newInfo Path
 

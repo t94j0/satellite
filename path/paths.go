@@ -15,7 +15,7 @@ type Paths struct {
 	list map[string]*Path
 }
 
-// NewPaths creates a new Paths variable from the specified base path
+// New creates a new Paths variable from the specified base path
 func New(base string) (*Paths, error) {
 	list := make(map[string]*Path)
 	ret := &Paths{

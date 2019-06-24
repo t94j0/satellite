@@ -329,6 +329,7 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 
 * Specific redirection per IP
 * Timeout on ClientID
+* `handler` package returns an http.Handler object instead of a full HTTP server
 
 
 ## Open Source Projects Used:
