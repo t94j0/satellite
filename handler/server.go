@@ -73,7 +73,6 @@ func (s Server) Start() error {
 		}()
 	}
 
-	// HTTPS
 	mux := http.NewServeMux()
 	if s.managementPath != "" {
 		mux.HandleFunc(s.managementPath, s.managementHandler)
@@ -156,7 +155,12 @@ func (s Server) render(w http.ResponseWriter, req *http.Request, path *path.Path
 		if err != nil {
 			log.Error(err)
 		}
-		httputil.NewSingleHostReverseProxy(proxyURL).ServeHTTP(w, req)
+		proxy := httputil.NewSingleHostReverseProxy(proxyURL)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		proxy.Transport = tr
+		proxy.ServeHTTP(w, req)
 	} else {
 		data, err := ioutil.ReadFile(path.FullPath)
 		if err != nil {

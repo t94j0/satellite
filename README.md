@@ -332,6 +332,8 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 * Specific redirection per IP
 * Timeout on ClientID
 * `handler` package returns an http.Handler object instead of a full HTTP server
+* Improve path refreshing (watcher.go)
+* Fix issue where proxy body unwraps based on content type (see default amazon.profile)
 
 
 ## Open Source Projects Used:

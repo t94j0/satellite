@@ -1,8 +1,6 @@
 package main
 
 import (
-	"path/filepath"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
@@ -54,12 +52,6 @@ func main() {
 	paths, err := path.New(serverPath)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	// Parse proxy.yml
-	proxyPath := filepath.Join(serverPath, "proxy.yml")
-	if err := paths.AddProxyList(proxyPath); err != nil {
-		log.Debug("No proxy path found")
 	}
 
 	// Warn user about redirection opsec

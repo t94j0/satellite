@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func createWatcher(path string, durationStr string, f func() error) error {
@@ -15,7 +16,7 @@ func createWatcher(path string, durationStr string, f func() error) error {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "unable to initialize watcher")
 	}
 	defer watcher.Close()
 
@@ -31,11 +32,12 @@ func createWatcher(path string, durationStr string, f func() error) error {
 				}
 				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Remove == fsnotify.Remove {
 					if time.Now().Sub(last) > maxDuration {
-						log.Println("Reloading.", event.Op, event.Name)
+						log.Info("Reloading.")
+						log.Debug("Reloading Event: ", event.Op, event.Name)
 						if err := f(); err != nil {
-							log.Println("Error: ", err)
+							log.Error("Error: ", err)
 						} else {
-							log.Println("Successful reload")
+							log.Debug("Successful reload")
 						}
 						last = time.Now()
 					}
@@ -44,7 +46,7 @@ func createWatcher(path string, durationStr string, f func() error) error {
 				if !ok {
 					return
 				}
-				log.Println("Error: ", err)
+				log.Error("Error: ", err)
 			}
 		}
 	}()

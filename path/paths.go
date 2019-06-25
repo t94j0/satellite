@@ -11,16 +11,18 @@ import (
 
 // Paths is the compilation of parsed paths
 type Paths struct {
-	base string
-	list map[string]*Path
+	base      string
+	list      map[string]*Path
+	proxyPath string
 }
 
 // New creates a new Paths variable from the specified base path
 func New(base string) (*Paths, error) {
 	list := make(map[string]*Path)
 	ret := &Paths{
-		base: base,
-		list: list,
+		base:      base,
+		list:      list,
+		proxyPath: "/proxy.yml",
 	}
 
 	if err := ret.Reload(); err != nil {
@@ -109,7 +111,6 @@ func (paths *Paths) verify() error {
 }
 
 // Reload refreshes the list of paths internally to Paths
-// TODO: Add proxy paths to this list
 func (paths *Paths) Reload() error {
 	paths.list = make(map[string]*Path)
 	if err := filepath.Walk(paths.base, func(oPath string, info os.FileInfo, err error) error {
@@ -135,6 +136,14 @@ func (paths *Paths) Reload() error {
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	// Add proxy path if it exists
+	proxyPath := filepath.Join(paths.base, paths.proxyPath)
+	if _, err := os.Stat(proxyPath); !os.IsNotExist(err) {
+		if err := paths.AddProxyList(proxyPath); err != nil {
+			return err
+		}
 	}
 
 	return paths.verify()
