@@ -333,7 +333,8 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 * Timeout on ClientID
 * `handler` package returns an http.Handler object instead of a full HTTP server
 * Improve path refreshing (watcher.go)
-* Fix issue where proxy body unwraps based on content type (see default amazon.profile)
+* Fix [issue][issue] where proxy body unwraps based on content type (see default amazon.profile)
+* Management doesNotExistHandler mimic
 
 
 ## Open Source Projects Used:
@@ -344,3 +345,4 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 [ja3server]: https://github.com/CapacitorSet/ja3-server
 [server header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server
 [contenttype]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
+[issue]: https://golang.org/src/net/http/httputil/reverseproxy.go?s=3330:3391#307
