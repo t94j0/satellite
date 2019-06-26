@@ -2,6 +2,8 @@
 
 Satellite is an web payload hosting service which filters requests to ensure the correct target is getting a payload. This can also be a useful service for hosting files that should be only accessed in very specific circumstances.
 
+A real satellite is normally configured to redirect traffic from the earth to space and back, but could also be used to send data by itself. In the same way, satellite the project does C2 redirection, but can also host payloads.
+
 
 ## Installation
 
@@ -24,14 +26,14 @@ openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>
 
 ### Build from Source
 
-1. 
+1. Download [Go][go]
 
 2. Get source
 
-3. 
+3. `go build ./satellite`
 
 
-## Configuration
+## Server Configuration
 
 Satellite looks in `$HOME/.config/satellite/config.yml`, `$HOME/.satellite/config.yml`, and `/etc/satellite/config.yml` for service configuration.
 
@@ -75,26 +77,7 @@ ssl:
 
 ## Serving Payloads
 
-In the `server_root` directory chosen in the [configuration](#configuration) section, place any files you want to serve as a payload. Along with those files, create a `<payload_name>.info` file. For example, if you want to host a payload called `index.html`, make `index.html.info` as well. .info files are YML which contain filtering information for the payload you are hosting.
-
-Here are all the filtering options for a file.
-
-### Quick List of Options
-
-* not_serving
-* authorized_useragents
-* authorized_iprange
-* authorized_methods
-* authorized_headers
-* authorized_ja3
-* blacklist_iprange
-* serve
-* prereq
-* exec
-
-* content_type
-* disposition.{type,file_name}
-* on_failure.{redirect,render}
+In the `server_root` directory chosen in the [configuration](#configuration) section, place any files you want to serve as a payload. Along with those files, create a `<payload_name>.info` file. For example, if you want to host a payload called `index.html`, make `index.html.info` as well. `.info` files are YML which contain filtering information for the payload you are hosting.
 
 
 ### serve
@@ -371,6 +354,7 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 
 * [JA3 Server][ja3server]
 
+[go]: https://golang.org/dl/
 [ja3]: https://github.com/salesforce/ja3
 [ja3server]: https://github.com/CapacitorSet/ja3-server
 [server header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server
