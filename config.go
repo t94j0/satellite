@@ -6,7 +6,7 @@ import "github.com/spf13/viper"
 func Config() (*viper.Viper, error) {
 	config := viper.New()
 
-	config.SetDefault("server_path", "/var/www/html")
+	config.SetDefault("server_root", "/var/www/html")
 	config.SetDefault("listen", "127.0.0.1:8080")
 
 	config.SetConfigName("config")

@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	serverPath := config.GetString("server_path")
+	serverRoot := config.GetString("server_root")
 	listen := config.GetString("listen")
 	certPath := config.GetString("ssl.cert")
 	keyPath := config.GetString("ssl.key")
@@ -46,10 +46,10 @@ func main() {
 	log.SetLevel(logOptions[logLevel])
 
 	log.Debugf("Using config file %s", config.ConfigFileUsed())
-	log.Debugf("Using server path %s", serverPath)
+	log.Debugf("Using server path %s", serverRoot)
 
 	// Parse .info files
-	paths, err := path.New(serverPath)
+	paths, err := path.New(serverRoot)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,9 +61,9 @@ func main() {
 
 	log.Debugf("Loaded %d path(s)", paths.Len())
 
-	// Listen for when files in serverPath change
+	// Listen for when files in serverRoot change
 	go func() {
-		if err := createWatcher(serverPath, "1s", func() error {
+		if err := createWatcher(serverRoot, "1s", func() error {
 			return paths.Reload()
 		}); err != nil {
 			log.Fatal(err)
@@ -73,7 +73,7 @@ func main() {
 	// Create server and listen
 	server, err := handler.New(
 		paths,
-		serverPath,
+		serverRoot,
 		listen,
 		keyPath,
 		certPath,

@@ -5,6 +5,8 @@ Satellite is an web payload hosting service which filters requests to ensure the
 
 ## Installation
 
+### Install With Go
+
 1. Create SSL keys
 
 ```
@@ -19,6 +21,15 @@ openssl rsa -in key.pem -out key.unencrypted.pem -passin pass:<pass>
 3. Run Project
 
 `satellite`
+
+### Build from Source
+
+1. 
+
+2. Get source
+
+3. 
+
 
 ## Configuration
 
@@ -43,7 +54,7 @@ An example configuration is shown below.
 
 
 ```yaml
-server_path: /var/www/html
+server_root: /var/www/html
 listen: 127.0.0.1:8080
 index: /index.html
 
@@ -67,6 +78,23 @@ ssl:
 In the `server_root` directory chosen in the [configuration](#configuration) section, place any files you want to serve as a payload. Along with those files, create a `<payload_name>.info` file. For example, if you want to host a payload called `index.html`, make `index.html.info` as well. .info files are YML which contain filtering information for the payload you are hosting.
 
 Here are all the filtering options for a file.
+
+### Quick List of Options
+
+* not_serving
+* authorized_useragents
+* authorized_iprange
+* authorized_methods
+* authorized_headers
+* authorized_ja3
+* blacklist_iprange
+* serve
+* prereq
+* exec
+
+* content_type
+* disposition.{type,file_name}
+* on_failure.{redirect,render}
 
 
 ### serve
@@ -335,6 +363,8 @@ POST /management/new - Create new path with data. Warning: Users can arbitrarily
 * Improve path refreshing (watcher.go)
 * Fix [issue][issue] where proxy body unwraps based on content type (see default amazon.profile)
 * Management doesNotExistHandler mimic
+* Log files for specific parts of the project (proxy log, payload log, etc)
+* cs2modrewrite.py for satellite
 
 
 ## Open Source Projects Used:

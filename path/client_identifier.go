@@ -1,7 +1,6 @@
 package path
 
 import (
-	"fmt"
 	"net"
 	"time"
 )
@@ -46,7 +45,6 @@ func (c *ClientID) Match(ip net.IP, targetList []string) bool {
 	lastSubset := list[len(list)-len(targetList) : len(list)]
 
 	for i, _ := range lastSubset {
-		fmt.Println(lastSubset[i], targetList[i])
 		if lastSubset[i] != targetList[i] {
 			return false
 		}
