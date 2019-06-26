@@ -2,7 +2,7 @@
 
 The options example shows the basics of how to dynamically serve payloads based on an HTTP request.
 
-In satellite, payloads with <name> will only be served when <name>.info is created. The file can be blank, but will eventually be populated with information about the endpoint.
+In satellite, payloads with <name> will only be served when a <name>.info file is created. The file can be blank, but will eventually be populated with information about the endpoint.
 
 
 ## Setup
