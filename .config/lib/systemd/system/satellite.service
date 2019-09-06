@@ -1,0 +1,12 @@
+[Unit]
+Description=Satellite
+After=network.target remote-fs.target nss-lookup.target
+Documentation=https://github.com/t94j0/satellite/wiki
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/satellite
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

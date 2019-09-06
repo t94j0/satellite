@@ -1,0 +1,3 @@
+exec:
+  script: /var/www/options/exec.py
+  output: ok

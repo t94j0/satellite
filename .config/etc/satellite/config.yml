@@ -1,0 +1,10 @@
+server_root: /var/www/html
+listen: 127.0.0.1:443
+index: /index.html
+log_level: debug
+
+server_header: Apache/2.4.1 (Unix)
+
+ssl:
+  key: /etc/satellite/keys/key.pem
+  cert: /etc/satellite/keys/cert.pem
