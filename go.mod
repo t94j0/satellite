@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/mattn/go-sqlite3 v1.11.0
+	github.com/oschwald/geoip2-golang v1.3.0
+	github.com/oschwald/maxminddb-golang v1.4.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prologic/bitcask v0.3.4
 	github.com/sirupsen/logrus v1.4.2

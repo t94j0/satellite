@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 
 	. "github.com/t94j0/satellite/path"
@@ -45,7 +47,7 @@ authorized_useragents:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -74,7 +76,7 @@ authorized_useragents:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -121,7 +123,7 @@ authorized_useragents:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -150,7 +152,7 @@ blacklist_useragents:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -179,7 +181,7 @@ blacklist_useragents:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -190,7 +192,7 @@ blacklist_useragents:
 
 func TestRequestConditions_ShouldHost_ip_auth_succeed(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -206,7 +208,7 @@ authorized_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -217,7 +219,7 @@ authorized_iprange:
 
 func TestRequestConditions_ShouldHost_ip_auth_fail(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.2"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.2:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -232,7 +234,7 @@ authorized_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -244,7 +246,7 @@ authorized_iprange:
 
 func TestRequestConditions_ShouldHost_ip_auth_cidr_succeed(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -259,7 +261,7 @@ authorized_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -270,7 +272,7 @@ authorized_iprange:
 
 func TestRequestConditions_ShouldHost_ip_auth_cidr_fail(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.1.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.1.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -285,7 +287,7 @@ authorized_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -296,7 +298,7 @@ authorized_iprange:
 
 func TestRequestConditions_ShouldHost_ip_auth_wrongcidr(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.1.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.1.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -311,7 +313,7 @@ authorized_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -322,7 +324,7 @@ authorized_iprange:
 
 func TestRequestConditions_ShouldHost_ip_bl_succeed(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -337,7 +339,7 @@ blacklist_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -348,7 +350,7 @@ blacklist_iprange:
 
 func TestRequestConditions_ShouldHost_ip_bl_fail(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.2"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.2:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -363,7 +365,7 @@ blacklist_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -374,7 +376,7 @@ blacklist_iprange:
 
 func TestRequestConditions_ShouldHost_ip_bl_cidr_success(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.0.5"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.0.5:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -389,7 +391,7 @@ blacklist_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -400,7 +402,7 @@ blacklist_iprange:
 
 func TestRequestConditions_ShouldHost_ip_bl_cidr_fail(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "127.0.1.1"}
+	mockRequest := &http.Request{RemoteAddr: "127.0.1.1:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -415,7 +417,7 @@ blacklist_iprange:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -441,7 +443,7 @@ authorized_methods:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -468,7 +470,7 @@ authorized_methods:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -497,7 +499,7 @@ authorized_headers:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -526,7 +528,7 @@ authorized_headers:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -581,7 +583,7 @@ func TestRequestConditions_ShouldHost_exec_succeed(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -631,7 +633,7 @@ func TestRequestConditions_ShouldHost_exec_fail(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -660,7 +662,7 @@ not_serving: true`
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -689,7 +691,7 @@ serve: 1`
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -722,7 +724,7 @@ serve: 1`
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(mockRequest, state) {
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -755,7 +757,7 @@ prereq:`
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(mockRequest, state) {
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -793,7 +795,7 @@ prereq:
 	if err != nil {
 		t.Error(err)
 	}
-	if !conditions.ShouldHost(payloadHit, state) {
+	if !conditions.ShouldHost(payloadHit, state, geoip.DB{}) {
 		t.Fail()
 	}
 
@@ -831,7 +833,117 @@ prereq:
 	if err != nil {
 		t.Error(err)
 	}
-	if conditions.ShouldHost(payloadHit, state) {
+	if conditions.ShouldHost(payloadHit, state, geoip.DB{}) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func createGeoIP() (geoip.DB, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return geoip.DB{}, nil
+	}
+
+	fp := filepath.Join(wd, "..", ".config", "var", "lib", "satellite", "GeoLite2-Country.mmdb")
+
+	gip, err := geoip.New(fp)
+	if err != nil {
+		return geoip.DB{}, nil
+	}
+
+	return gip, nil
+}
+
+func TestRequestConditions_ShouldHost_geoip_success(t *testing.T) {
+	// Create HTTP Request
+	mockRequest := &http.Request{RemoteAddr: "72.229.28.185:54321"}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	gip, err := createGeoIP()
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := `
+geoip:
+  authorized_countries:
+    - US`
+
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if !conditions.ShouldHost(mockRequest, state, gip) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_ShouldHost_geoip_failure(t *testing.T) {
+	// Create HTTP Request
+	mockRequest := &http.Request{RemoteAddr: "72.229.28.185"}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	gip, err := createGeoIP()
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := `geoip:
+  authorized_countries:
+    - EU`
+
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if conditions.ShouldHost(mockRequest, state, gip) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_ShouldHost_geoip_blacklist(t *testing.T) {
+	// Create HTTP Request
+	mockRequest := &http.Request{RemoteAddr: "72.229.28.185"}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	gip, err := createGeoIP()
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := `geoip:
+  blacklist_countries:
+    - US`
+
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if conditions.ShouldHost(mockRequest, state, gip) {
 		t.Fail()
 	}
 

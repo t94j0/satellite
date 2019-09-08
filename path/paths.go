@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 )
 
@@ -16,6 +17,7 @@ type Paths struct {
 	list      map[string]*Path
 	proxyPath string
 	state     *State
+	gip       geoip.DB
 }
 
 // New creates a new Paths variable from the specified base path
@@ -39,6 +41,17 @@ func New(base string) (*Paths, error) {
 	}
 
 	return ret, nil
+}
+
+// AddGeoIP
+func (paths *Paths) AddGeoIP(path string) error {
+	db, err := geoip.New(path)
+	if err != nil {
+		return err
+	}
+	paths.gip = db
+
+	return nil
 }
 
 // Len gets the number of paths
@@ -175,7 +188,7 @@ func (paths *Paths) MatchAndServe(w http.ResponseWriter, req *http.Request) (boo
 		return false, nil
 	}
 
-	shouldHost := targetPath.ShouldHost(req, paths.state)
+	shouldHost := targetPath.ShouldHost(req, paths.state, paths.gip)
 
 	if !shouldHost {
 		if targetPath.OnFailure.Redirect != "" {

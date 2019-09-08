@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httptest"
 	. "github.com/t94j0/satellite/path"
@@ -182,7 +183,7 @@ authorized_useragents:
 	}
 
 	// Execute ShouldHost
-	shouldHost := path.ShouldHost(req, state)
+	shouldHost := path.ShouldHost(req, state, geoip.DB{})
 
 	if !shouldHost {
 		t.Fail()

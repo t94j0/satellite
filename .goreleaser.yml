@@ -31,6 +31,7 @@ nfpms:
     files:
       ".config/etc/satellite/config.yml": "/etc/satellite/config.yml"
       ".config/lib/systemd/system/satellite.service": "/lib/systemd/system/satellite.service"
+      ".config/var/lib/satellite/GeoLite2-Country.mmdb": "/var/lib/satellite/GeoLite2-Country.mmdb"
       
 brews:
   - name: satellite

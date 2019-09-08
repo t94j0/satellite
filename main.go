@@ -29,6 +29,7 @@ func main() {
 	indexPath := config.GetString("index")
 	redirectHTTP := config.GetBool("redirect_http")
 	logLevel := config.GetString("log_level")
+	geoipPath := config.GetString("geoip_path")
 
 	logOptions := map[string]log.Level{
 		"":      log.DebugLevel,
@@ -50,6 +51,10 @@ func main() {
 	paths, err := path.New(serverRoot)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if err := paths.AddGeoIP(geoipPath); err != nil {
+		log.Warn("Unable to access geoip_path. Geo to IP functionality disabled.")
 	}
 
 	// Warn user about redirection opsec

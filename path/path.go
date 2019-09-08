@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/t94j0/satellite/crypto/tls"
+	"github.com/t94j0/satellite/geoip"
 
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httputil"
@@ -114,8 +115,8 @@ func (f *Path) ContentHeaders() map[string]string {
 }
 
 // ShouldHost does the checking to see if the requested file should be given to a target
-func (f *Path) ShouldHost(req *http.Request, state *State) bool {
-	shouldHost := f.conditions.ShouldHost(req, state)
+func (f *Path) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
+	shouldHost := f.conditions.ShouldHost(req, state, gip)
 	if shouldHost {
 		state.Hit(req)
 	}

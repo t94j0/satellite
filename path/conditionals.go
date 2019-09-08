@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httputil"
 	"gopkg.in/yaml.v2"
@@ -42,6 +43,10 @@ type RequestConditions struct {
 	Serve uint64 `yaml:"serve,omitempty"`
 	// PrereqPaths path of hits that need to happen before the current one will succeed
 	PrereqPaths []string `yaml:"prereq,omitempty"`
+	GeoIP       struct {
+		AuthorizedCountries []string `yaml:"authorized_countries"`
+		BlacklistCountries  []string `yaml:"blacklist_countries"`
+	} `yaml:"geoip"`
 }
 
 // NewRequestConditions creates an object based on a YAML blob
@@ -67,8 +72,13 @@ func NewRequestConditions(data []byte) (RequestConditions, error) {
 	return conditions, nil
 }
 
+func parseRemoteAddr(ipPort string) net.IP {
+	targetIP := strings.Split(ipPort, ":")[0]
+	return net.ParseIP(targetIP)
+}
+
 // ShouldHost returns when an HTTP request should be hosted or not
-func (c *RequestConditions) ShouldHost(req *http.Request, state *State) bool {
+func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
 	// Not Serving
 	if c.NotServing {
 		return false
@@ -98,7 +108,7 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State) bool {
 	}
 
 	// IP Range
-	targetHost := net.ParseIP(req.RemoteAddr)
+	targetHost := parseRemoteAddr(req.RemoteAddr)
 	correctRange := false
 	if len(c.AuthorizedIPRange) != 0 {
 		for _, r := range c.AuthorizedIPRange {
@@ -226,5 +236,34 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State) bool {
 		filledPrereq = state.MatchPaths(targetHost, c.PrereqPaths)
 	}
 
-	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && correctExec && correctServe && filledPrereq
+	// GeoIP
+	correctGeoIP := true
+	if gip.HasDB() {
+		correctGeoIP = false
+		cc, err := gip.CountryCode(targetHost)
+		if err != nil {
+			return false
+		}
+
+		// Authorized GeoIP
+		if len(c.GeoIP.AuthorizedCountries) != 0 {
+			for _, targetCC := range c.GeoIP.AuthorizedCountries {
+				if cc == targetCC {
+					correctGeoIP = true
+				}
+			}
+		}
+
+		// Blacklist GeoIP
+		if len(c.GeoIP.BlacklistCountries) != 0 {
+			for _, targetCC := range c.GeoIP.BlacklistCountries {
+				if targetCC == cc {
+					return false
+				}
+			}
+		}
+
+	}
+
+	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && correctExec && correctServe && filledPrereq && correctGeoIP
 }

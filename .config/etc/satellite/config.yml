@@ -5,6 +5,8 @@ log_level: debug
 
 server_header: Apache/2.4.1 (Unix)
 
+goip_path: /var/lib/satellite/GeoLite2-Country.mmdb
+
 ssl:
   key: /etc/satellite/keys/key.pem
   cert: /etc/satellite/keys/cert.pem
