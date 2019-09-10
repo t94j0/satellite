@@ -42,9 +42,10 @@ To get hands-on experience with the options, check out the [examples](https://gi
 For a more detailed explaination of how to use satellite, check out the [wiki](https://github.com/t94j0/satellite/wiki)
 
 
-## Open Source Projects Used:
+## Projects Used:
 
 * [JA3 Server][ja3server]
+* [MaxMind](https://www.maxmind.com/en/geoip2-databases)
 
 [go]: https://golang.org/dl/
 [ja3]: https://github.com/salesforce/ja3
