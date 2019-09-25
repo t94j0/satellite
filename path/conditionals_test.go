@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/t94j0/satellite/geoip"
@@ -23,6 +24,118 @@ func TestNewRequestConditions(t *testing.T) {
 func TestNewRequestConditions_fail(t *testing.T) {
 	data := "abc:abc"
 	if _, err := NewRequestConditions([]byte(data)); err == nil {
+		t.Fail()
+	}
+}
+
+func TestMergeRequestConditions_one(t *testing.T) {
+	Sentinal := "SENTINAL"
+	rq1 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal},
+		BlacklistUserAgents:  []string{Sentinal},
+		AuthorizedIPRange:    []string{Sentinal},
+		BlacklistIPRange:     []string{Sentinal},
+		AuthorizedMethods:    []string{Sentinal},
+		AuthorizedHeaders:    map[string]string{Sentinal: Sentinal},
+		AuthorizedJA3:        []string{Sentinal},
+		NotServing:           true,
+		Serve:                1,
+		PrereqPaths:          []string{Sentinal},
+	}
+
+	rq, err := MergeRequestConditions(rq1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(rq1, rq) {
+		t.Fail()
+	}
+}
+
+func TestMergeRequestConditions_two_overwrite(t *testing.T) {
+	Sentinal1 := "SENTINAL1"
+	Sentinal2 := "SENTINAL2"
+	rq1 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal1},
+		BlacklistIPRange:     []string{Sentinal1},
+	}
+	rq2 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal2},
+		BlacklistIPRange:     []string{Sentinal2},
+	}
+
+	rq, err := MergeRequestConditions(rq1, rq2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal2 {
+		t.Fail()
+	}
+
+	if len(rq.BlacklistIPRange) != 1 && rq.BlacklistIPRange[0] != Sentinal2 {
+		t.Fail()
+	}
+}
+
+func TestMergeRequestConditions_two_merge(t *testing.T) {
+	Sentinal1 := "SENTINAL1"
+	Sentinal2 := "SENTINAL2"
+	rq1 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal1},
+		BlacklistIPRange:     []string{Sentinal1},
+	}
+	rq2 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal2},
+	}
+
+	rq, err := MergeRequestConditions(rq1, rq2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal2 {
+		t.Fail()
+	}
+
+	if len(rq.BlacklistIPRange) != 1 && rq.BlacklistIPRange[0] != Sentinal1 {
+		t.Fail()
+	}
+}
+
+func TestMergeRequestConditions_three(t *testing.T) {
+	Sentinal1 := "SENTINAL1"
+	Sentinal2 := "SENTINAL2"
+	Sentinal3 := "SENTINAL3"
+	rq1 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal1},
+		BlacklistIPRange:     []string{Sentinal1},
+		PrereqPaths:          []string{Sentinal1},
+	}
+	rq2 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal2},
+		PrereqPaths:          []string{Sentinal2},
+	}
+	rq3 := RequestConditions{
+		AuthorizedUserAgents: []string{Sentinal2},
+	}
+
+	rq, err := MergeRequestConditions(rq1, rq2, rq3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal3 {
+		t.Fail()
+	}
+
+	if len(rq.BlacklistIPRange) != 1 && rq.BlacklistIPRange[0] != Sentinal1 {
+		t.Fail()
+	}
+
+	if len(rq.PrereqPaths) != 1 && rq.PrereqPaths[0] != Sentinal2 {
 		t.Fail()
 	}
 }

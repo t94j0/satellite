@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
@@ -70,6 +71,17 @@ func NewRequestConditions(data []byte) (RequestConditions, error) {
 	}
 
 	return conditions, nil
+}
+
+// MergeRequestConditions merges a list of RequestCondition. They are applied starting from the first to the last. It will overwrite later RequestCondition
+func MergeRequestConditions(conds ...RequestConditions) (RequestConditions, error) {
+	var target RequestConditions
+	for _, cond := range conds {
+		if err := mergo.Merge(&target, cond, mergo.WithOverride); err != nil {
+			return target, err
+		}
+	}
+	return target, nil
 }
 
 func parseRemoteAddr(ipPort string) net.IP {
