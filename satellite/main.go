@@ -4,8 +4,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
-	"github.com/t94j0/satellite/satellite/handler"
 	"github.com/t94j0/satellite/satellite/path"
+	"github.com/t94j0/satellite/satellite/server"
+	"github.com/t94j0/satellite/satellite/util"
 )
 
 // ProjectName is the current project name
@@ -57,11 +58,6 @@ func main() {
 		log.Warn("Unable to access geoip_path. Geo to IP functionality disabled.")
 	}
 
-	// Warn user about redirection opsec
-	if notFoundRedirect == "" && notFoundRender == "" {
-		log.Warn("Use not_found handlers for opsec")
-	}
-
 	log.Debugf("Loaded %d path(s)", paths.Len())
 
 	// Listen for when files in serverRoot change
@@ -73,17 +69,30 @@ func main() {
 		}
 	}()
 
+	// NotFound information
+	nf, err := util.NewNotFound(notFoundRedirect, notFoundRender)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if nf.ShouldWarn() {
+		log.Warn("Use not_found handlers for opsec")
+	}
+
+	// Build SSL Key object
+	ssl, err := server.NewSSL(keyPath, certPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create server and listen
-	server, err := handler.New(
+	server, err := server.New(
 		paths,
+		ssl,
+		nf,
 		serverRoot,
 		listen,
-		keyPath,
-		certPath,
 		serverHeader,
 		indexPath,
-		notFoundRedirect,
-		notFoundRender,
 		redirectHTTP,
 	)
 	if err != nil {

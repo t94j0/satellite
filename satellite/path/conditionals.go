@@ -251,7 +251,6 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	// GeoIP
 	correctGeoIP := true
 	if gip.HasDB() {
-		correctGeoIP = false
 		cc, err := gip.CountryCode(targetHost)
 		if err != nil {
 			return false
@@ -259,6 +258,7 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 
 		// Authorized GeoIP
 		if len(c.GeoIP.AuthorizedCountries) != 0 {
+			correctGeoIP = false
 			for _, targetCC := range c.GeoIP.AuthorizedCountries {
 				if cc == targetCC {
 					correctGeoIP = true
@@ -274,7 +274,6 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 				}
 			}
 		}
-
 	}
 
 	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && correctExec && correctServe && filledPrereq && correctGeoIP

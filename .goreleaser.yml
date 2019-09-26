@@ -5,6 +5,7 @@ before:
 builds:
 - env:
     - CGO_ENABLED=0
+  main: ./satellite/main.go
 
 checksum:
   name_template: 'checksums.txt'
