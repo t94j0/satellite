@@ -958,14 +958,14 @@ prereq:
 func createGeoIP() (geoip.DB, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return geoip.DB{}, nil
+		return geoip.DB{}, err
 	}
 
-	fp := filepath.Join(wd, "..", ".config", "var", "lib", "satellite", "GeoLite2-Country.mmdb")
+	fp := filepath.Join(wd, "..", "..", ".config", "var", "lib", "satellite", "GeoLite2-Country.mmdb")
 
 	gip, err := geoip.New(fp)
 	if err != nil {
-		return geoip.DB{}, nil
+		return geoip.DB{}, err
 	}
 
 	return gip, nil
@@ -1005,7 +1005,7 @@ geoip:
 
 func TestRequestConditions_ShouldHost_geoip_failure(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "72.229.28.185"}
+	mockRequest := &http.Request{RemoteAddr: "72.229.28.185:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
@@ -1036,7 +1036,7 @@ func TestRequestConditions_ShouldHost_geoip_failure(t *testing.T) {
 
 func TestRequestConditions_ShouldHost_geoip_blacklist(t *testing.T) {
 	// Create HTTP Request
-	mockRequest := &http.Request{RemoteAddr: "72.229.28.185"}
+	mockRequest := &http.Request{RemoteAddr: "72.229.28.185:54321"}
 
 	state, file, err := TemporaryDB()
 	if err != nil {
