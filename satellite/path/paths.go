@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
+	"github.com/t94j0/satellite/satellite/geoip"
 )
 
 // Paths is the compilation of parsed paths

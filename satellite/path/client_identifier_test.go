@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	. "github.com/t94j0/satellite/path"
+	. "github.com/t94j0/satellite/satellite/path"
 )
 
 func TestClientID(t *testing.T) {

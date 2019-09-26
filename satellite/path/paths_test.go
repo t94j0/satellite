@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/t94j0/satellite/net/http/httptest"
-	. "github.com/t94j0/satellite/path"
+	. "github.com/t94j0/satellite/satellite/path"
 )
 
 // TempDir Helper

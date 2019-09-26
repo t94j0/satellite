@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/t94j0/satellite/net/http"
-	. "github.com/t94j0/satellite/path"
+	. "github.com/t94j0/satellite/satellite/path"
 )
 
 // Helper

@@ -2,6 +2,7 @@ package geoip
 
 import (
 	"net"
+	"os"
 
 	gip "github.com/oschwald/geoip2-golang"
 )
@@ -13,6 +14,10 @@ type DB struct {
 
 // New creates a new DB reader based on the mmdb path
 func New(dbpath string) (DB, error) {
+	if _, err := os.Stat(dbpath); os.IsNotExist(err) {
+		return DB{}, os.ErrNotExist
+	}
+
 	var geoip DB
 	db, err := gip.Open(dbpath)
 	if err != nil {

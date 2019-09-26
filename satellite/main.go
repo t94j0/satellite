@@ -4,8 +4,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
-	"github.com/t94j0/satellite/handler"
-	"github.com/t94j0/satellite/path"
+	"github.com/t94j0/satellite/satellite/handler"
+	"github.com/t94j0/satellite/satellite/path"
 )
 
 // ProjectName is the current project name

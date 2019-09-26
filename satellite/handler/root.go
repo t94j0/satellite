@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/satellite/crypto/tls"
 	"github.com/t94j0/satellite/net/http"
-	"github.com/t94j0/satellite/path"
+	"github.com/t94j0/satellite/satellite/path"
 )
 
 // Server is used to serve HTTP(S)

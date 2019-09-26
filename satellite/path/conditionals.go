@@ -11,9 +11,9 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
-	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httputil"
+	"github.com/t94j0/satellite/satellite/geoip"
 	"gopkg.in/yaml.v2"
 )
 

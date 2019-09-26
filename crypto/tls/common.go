@@ -298,7 +298,6 @@ func (c *ClientHelloInfo) JA3() string {
 	}
 
 	// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
-
 	s := ""
 	s += fmt.Sprintf("%d,", c.Version)
 

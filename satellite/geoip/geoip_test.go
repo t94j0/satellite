@@ -8,20 +8,20 @@ import (
 	"path/filepath"
 	"testing"
 
-	. "github.com/t94j0/satellite/geoip"
+	. "github.com/t94j0/satellite/satellite/geoip"
 )
 
-func createGeoIP() (GeoIP, error) {
+func createGeoIP() (DB, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return GeoIP{}, nil
+		return DB{}, err
 	}
 
-	fp := filepath.Join(wd, "..", ".config", "var", "lib", "satellite", "GeoLite2-Country.mmdb")
+	fp := filepath.Join(wd, "..", "..", ".config", "var", "lib", "satellite", "GeoLite2-Country.mmdb")
 
 	gip, err := New(fp)
 	if err != nil {
-		return GeoIP{}, nil
+		return DB{}, err
 	}
 
 	return gip, nil
@@ -53,6 +53,6 @@ func TestNew(t *testing.T) {
 
 func TestNew_CountryCode(t *testing.T) {
 	if err := testIPCountry("104.222.16.238", "US"); err != nil {
-		t.Error(t)
+		t.Error(err)
 	}
 }

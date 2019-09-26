@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/t94j0/satellite/geoip"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httptest"
-	. "github.com/t94j0/satellite/path"
+	"github.com/t94j0/satellite/satellite/geoip"
+	. "github.com/t94j0/satellite/satellite/path"
 )
 
 func TestNewPath(t *testing.T) {
