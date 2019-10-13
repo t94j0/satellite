@@ -1,10 +1,12 @@
 package main
 
 import (
+	"path"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
-	"github.com/t94j0/satellite/satellite/path"
+	sPath "github.com/t94j0/satellite/satellite/path"
 	"github.com/t94j0/satellite/satellite/server"
 	"github.com/t94j0/satellite/satellite/util"
 )
@@ -49,7 +51,8 @@ func main() {
 	log.Debugf("Using server path %s", serverRoot)
 
 	// Parse .info files
-	paths, err := path.New(serverRoot)
+	gcp := path.Join(serverRoot, "conditions")
+	paths, err := sPath.NewDefault(serverRoot, gcp)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -22,18 +22,11 @@ type RootHandler struct {
 // NewRootHandler creates a new RootHandler object
 func NewRootHandler(ps *path.Paths, notFound util.NotFound, defaultIndex, serverHeader string) RootHandler {
 	return RootHandler{
-		defaultIndex,
-		serverHeader,
-		ps,
-		notFound,
+		defaultIndex: defaultIndex,
+		serverHeader: serverHeader,
+		paths:        ps,
+		notFound:     notFound,
 	}
-}
-
-func getJA3(req *http.Request) string {
-	hash := md5.Sum([]byte(req.JA3Fingerprint))
-	out := make([]byte, 32)
-	hex.Encode(out, hash[:])
-	return string(out)
 }
 
 // ServeHTTP redirects the task of handling based on
@@ -58,11 +51,18 @@ func (h RootHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	if !served {
-		h.doesNotExistHandler(w, req)
+		h.notExistHandler(w, req)
 	}
 }
 
-func (h RootHandler) doesNotExistHandler(w http.ResponseWriter, req *http.Request) {
+func getJA3(req *http.Request) string {
+	hash := md5.Sum([]byte(req.JA3Fingerprint))
+	out := make([]byte, 32)
+	hex.Encode(out, hash[:])
+	return string(out)
+}
+
+func (h RootHandler) notExistHandler(w http.ResponseWriter, req *http.Request) {
 	if h.notFound.Redirect != "" {
 		http.Redirect(w, req, h.notFound.Redirect, http.StatusMovedPermanently)
 	} else if h.notFound.Render != "" {

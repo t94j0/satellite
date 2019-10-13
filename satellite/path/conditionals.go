@@ -76,8 +76,8 @@ func NewRequestConditions(data []byte) (RequestConditions, error) {
 // MergeRequestConditions merges a list of RequestCondition. They are applied starting from the first to the last. It will overwrite later RequestCondition
 func MergeRequestConditions(conds ...RequestConditions) (RequestConditions, error) {
 	var target RequestConditions
-	for _, cond := range conds {
-		if err := mergo.Merge(&target, cond, mergo.WithOverride); err != nil {
+	for _, c := range conds {
+		if err := mergo.Merge(&target, c, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 			return target, err
 		}
 	}

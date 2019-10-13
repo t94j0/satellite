@@ -1,6 +1,7 @@
 package path
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,27 +14,35 @@ import (
 
 // Paths is the compilation of parsed paths
 type Paths struct {
-	base      string
-	list      map[string]*Path
-	proxyPath string
-	state     *State
-	gip       geoip.DB
+	base                 string
+	proxyPath            string
+	proxyRoot            string
+	dbRoot               string
+	globalConditionsPath string
+
+	state *State
+	gip   geoip.DB
+	list  map[string]*Path
 }
 
 // New creates a new Paths variable from the specified base path
-func New(base string) (*Paths, error) {
+func New(serverRoot, proxyPath, dbPath, gcp string) (*Paths, error) {
 	list := make(map[string]*Path)
 
-	state, err := NewState(path.Join(base, ".db"))
+	state, err := NewState(path.Join(serverRoot, dbPath))
 	if err != nil {
 		return nil, err
 	}
 
 	ret := &Paths{
-		base:      base,
-		list:      list,
-		proxyPath: path.Join(base, "/.proxy.yml"),
-		state:     state,
+		base:                 serverRoot,
+		proxyPath:            path.Join(serverRoot, proxyPath),
+		proxyRoot:            proxyPath,
+		dbRoot:               dbPath,
+		globalConditionsPath: gcp,
+
+		list:  list,
+		state: state,
 	}
 
 	if err := ret.Reload(); err != nil {
@@ -41,6 +50,16 @@ func New(base string) (*Paths, error) {
 	}
 
 	return ret, nil
+}
+
+// NewDefault instantiates a Paths object with default configuration
+func NewDefault(serverRoot, gcp string) (*Paths, error) {
+	return New(serverRoot, ".proxy.yml", ".db", gcp)
+}
+
+// For many of the tests, we don't need to apply the global conditionals, so this helper function is for test cases
+func NewDefaultTest(serverRoot string) (*Paths, error) {
+	return New(serverRoot, ".proxy.yml", ".db", "")
 }
 
 // AddGeoIP
@@ -100,6 +119,103 @@ func (paths *Paths) RemoveDir(dir string) {
 	}
 }
 
+// AddMeta adds a meta (or .info) file to the paths list
+func (paths *Paths) IngestMeta(oPath string) error {
+	tmpPath, err := NewPath(oPath)
+	if err != nil {
+		return err
+	}
+
+	fullPath := strings.TrimSuffix(oPath, ".info")
+	tmpPath.HostedFile = fullPath
+
+	requestPath := strings.TrimPrefix(fullPath, paths.base)
+	tmpPath.Path = requestPath
+
+	paths.list[requestPath] = tmpPath
+	return nil
+}
+
+// AddPath adds a data path which is served when Path - Root is requested
+func (paths *Paths) IngestData(oPath string) error {
+	var tmpPath Path
+	tmpPath.HostedFile = oPath
+
+	requestPath := strings.TrimPrefix(oPath, paths.base)
+	tmpPath.Path = requestPath
+
+	paths.list[requestPath] = &tmpPath
+	return nil
+}
+
+// IngestProxy adds the proxy from target path if it exists
+func (paths *Paths) IngestProxy(oPath string) error {
+	proxyPath := paths.proxyPath
+	if _, err := os.Stat(proxyPath); !os.IsNotExist(err) {
+		if err := paths.AddProxyList(proxyPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (paths *Paths) collectConditionalsDirectory(targetPath string) (RequestConditions, error) {
+	condsResult := make([]RequestConditions, 0)
+
+	collectWalkFunc := func(oPath string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		condData, err := ioutil.ReadFile(oPath)
+		if err != nil {
+			return err
+		}
+
+		conds, err := NewRequestConditions(condData)
+		if err != nil {
+			return err
+		}
+
+		condsResult = append(condsResult, conds)
+		return nil
+	}
+
+	if err := filepath.Walk(targetPath, collectWalkFunc); err != nil {
+		return RequestConditions{}, err
+	}
+
+	mergedConds, err := MergeRequestConditions(condsResult...)
+	if err != nil {
+		return RequestConditions{}, err
+	}
+
+	return mergedConds, nil
+}
+
+func (paths *Paths) applyGlobalConditionals() error {
+	gcp := paths.globalConditionsPath
+	if gcp == "" {
+		return nil
+	}
+
+	globalConditions, err := paths.collectConditionalsDirectory(gcp)
+	if err != nil {
+		return err
+	}
+
+	for i, p := range paths.list {
+		newP, err := MergeRequestConditions(globalConditions, p.conditions)
+		if err != nil {
+			return err
+		}
+
+		paths.list[i].conditions = newP
+	}
+
+	return nil
+}
+
 // Reload refreshes the list of paths internally to Paths
 func (paths *Paths) Reload() error {
 	paths.list = make(map[string]*Path)
@@ -107,45 +223,25 @@ func (paths *Paths) Reload() error {
 		if err != nil {
 			return err
 		}
-
 		if strings.HasSuffix(oPath, ".info") {
-			tmpPath, err := NewPath(oPath)
-			if err != nil {
-				return err
-			}
-
-			fullPath := strings.TrimSuffix(oPath, ".info")
-			tmpPath.HostedFile = fullPath
-
-			requestPath := strings.TrimPrefix(fullPath, paths.base)
-			tmpPath.Path = requestPath
-
-			paths.list[requestPath] = tmpPath
-		} else {
-			var tmpPath Path
-			tmpPath.HostedFile = oPath
-
-			requestPath := strings.TrimPrefix(oPath, paths.base)
-			tmpPath.Path = requestPath
-
-			paths.list[requestPath] = &tmpPath
+			return paths.IngestMeta(oPath)
 		}
-		return nil
+		return paths.IngestData(oPath)
 	}); err != nil {
 		return err
 	}
 
-	// Add proxy path if it exists
-	proxyPath := paths.proxyPath
-	if _, err := os.Stat(proxyPath); !os.IsNotExist(err) {
-		if err := paths.AddProxyList(proxyPath); err != nil {
-			return err
-		}
+	if err := paths.IngestProxy(paths.proxyPath); err != nil {
+		return err
 	}
 
 	paths.Remove("")
-	paths.RemoveDir("/.db")
-	paths.Remove("/.proxy.yml")
+	paths.RemoveDir("/" + paths.dbRoot)
+	paths.Remove("/" + paths.proxyRoot)
+
+	if err := paths.applyGlobalConditionals(); err != nil {
+		return err
+	}
 
 	return nil
 }

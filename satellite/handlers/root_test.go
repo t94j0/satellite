@@ -50,7 +50,7 @@ func (t TempDir) CreateFiles(paths map[string]string) error {
 }
 
 func (t TempDir) Paths() (*path.Paths, error) {
-	return path.New(t.Path)
+	return path.NewDefaultTest(t.Path)
 }
 
 func (t TempDir) Close() error {

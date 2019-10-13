@@ -12,6 +12,7 @@ require (
 	github.com/prologic/bitcask v0.3.4
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.4.0
+	github.com/t94j0/array v0.0.0-20180426153242-68930562a6bd
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	gopkg.in/yaml.v2 v2.2.2

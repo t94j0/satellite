@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/t94j0/array"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/satellite/geoip"
 
@@ -54,7 +55,7 @@ func TestMergeRequestConditions_one(t *testing.T) {
 	}
 }
 
-func TestMergeRequestConditions_two_overwrite(t *testing.T) {
+func TestMergeRequestConditions_twoMerge(t *testing.T) {
 	Sentinal1 := "SENTINAL1"
 	Sentinal2 := "SENTINAL2"
 	rq1 := RequestConditions{
@@ -71,16 +72,16 @@ func TestMergeRequestConditions_two_overwrite(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal2 {
+	if len(rq.AuthorizedUserAgents) != 2 && array.In(Sentinal1, rq.AuthorizedUserAgents) && array.In(Sentinal2, rq.AuthorizedUserAgents) {
 		t.Fail()
 	}
 
-	if len(rq.BlacklistIPRange) != 1 && rq.BlacklistIPRange[0] != Sentinal2 {
+	if len(rq.BlacklistIPRange) != 2 && array.In(Sentinal1, rq.BlacklistIPRange) && array.In(Sentinal2, rq.BlacklistIPRange) {
 		t.Fail()
 	}
 }
 
-func TestMergeRequestConditions_two_merge(t *testing.T) {
+func TestMergeRequestConditions_twoOneExist(t *testing.T) {
 	Sentinal1 := "SENTINAL1"
 	Sentinal2 := "SENTINAL2"
 	rq1 := RequestConditions{
@@ -96,7 +97,7 @@ func TestMergeRequestConditions_two_merge(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal2 {
+	if len(rq.AuthorizedUserAgents) != 2 && array.In(Sentinal1, rq.AuthorizedUserAgents) && array.In(Sentinal2, rq.AuthorizedUserAgents) {
 		t.Fail()
 	}
 
@@ -119,7 +120,7 @@ func TestMergeRequestConditions_three(t *testing.T) {
 		PrereqPaths:          []string{Sentinal2},
 	}
 	rq3 := RequestConditions{
-		AuthorizedUserAgents: []string{Sentinal2},
+		AuthorizedUserAgents: []string{Sentinal3},
 	}
 
 	rq, err := MergeRequestConditions(rq1, rq2, rq3)
@@ -127,15 +128,15 @@ func TestMergeRequestConditions_three(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(rq.AuthorizedUserAgents) != 1 && rq.AuthorizedUserAgents[0] != Sentinal3 {
+	if len(rq.AuthorizedUserAgents) != 3 && array.In(Sentinal1, rq.AuthorizedUserAgents) && array.In(Sentinal2, rq.AuthorizedUserAgents) && array.In(Sentinal3, rq.AuthorizedUserAgents) {
 		t.Fail()
 	}
 
-	if len(rq.BlacklistIPRange) != 1 && rq.BlacklistIPRange[0] != Sentinal1 {
+	if len(rq.BlacklistIPRange) != 1 && array.In(Sentinal1, rq.BlacklistIPRange) {
 		t.Fail()
 	}
 
-	if len(rq.PrereqPaths) != 1 && rq.PrereqPaths[0] != Sentinal2 {
+	if len(rq.PrereqPaths) != 2 && array.In(Sentinal1, rq.PrereqPaths) && array.In(Sentinal2, rq.PrereqPaths) {
 		t.Fail()
 	}
 }

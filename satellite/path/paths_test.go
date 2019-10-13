@@ -1,6 +1,7 @@
 package path_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,16 +26,21 @@ func NewTempDir() (TempDir, error) {
 	return td, nil
 }
 
-func (t TempDir) CreateFile(name, content string) error {
+func (t TempDir) CreateFile(name, content string) {
 	fullpath := filepath.Join(t.Path, name)
-	if err := ioutil.WriteFile(fullpath, []byte(content), 0666); err != nil {
-		return err
-	}
-	return nil
+	ioutil.WriteFile(fullpath, []byte(content), 0666)
 }
 
 func (t TempDir) Close() error {
 	return os.RemoveAll(t.Path)
+}
+
+func makeUABlacklist(userAgents ...string) string {
+	tgt := "blacklist_useragents:\n"
+	for _, u := range userAgents {
+		tgt += fmt.Sprintf("  - %s\n", u)
+	}
+	return tgt
 }
 
 // Tests
@@ -44,7 +50,7 @@ func TestNew_none(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, err := New(dir.Path); err != nil {
+	if _, err := NewDefaultTest(dir.Path); err != nil {
 		t.Error(err)
 	}
 }
@@ -54,15 +60,15 @@ func TestPaths_Len_zero(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	paths, err := New(tmpdir.Path)
+	defer tmpdir.Close()
+
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
+
 	if paths.Len() != 0 {
 		t.Fail()
-	}
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
 	}
 }
 
@@ -71,21 +77,16 @@ func TestPaths_Len_one(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one.info", ""); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.CreateFile("one", ""); err != nil {
-		t.Error(err)
-	}
-	paths, err := New(tmpdir.Path)
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one.info", "")
+	tmpdir.CreateFile("one", "")
+
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
 	if paths.Len() != 1 {
 		t.Fail()
-	}
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
 	}
 }
 
@@ -94,13 +95,9 @@ func TestNew_one(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one.info", ""); err != nil {
-		t.Error(err)
-	}
-	if _, err := New(tmpdir.Path); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.Close(); err != nil {
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one.info", "")
+	if _, err := NewDefaultTest(tmpdir.Path); err != nil {
 		t.Error(err)
 	}
 }
@@ -110,16 +107,12 @@ func TestNew_proxy(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer tmpdir.Close()
 	proxyContent := `
 - path: /
   proxy: http://google.com`
-	if err := tmpdir.CreateFile(".proxy.yml", proxyContent); err != nil {
-		t.Error(err)
-	}
-	if _, err := New(tmpdir.Path); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.Close(); err != nil {
+	tmpdir.CreateFile(".proxy.yml", proxyContent)
+	if _, err := NewDefaultTest(tmpdir.Path); err != nil {
 		t.Error(err)
 	}
 }
@@ -129,20 +122,16 @@ func TestPaths_new_testproxyyml(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer tmpdir.Close()
 	oneData := `
 - path: /`
-	if err := tmpdir.CreateFile(".proxy.yml", oneData); err != nil {
-		t.Error(err)
-	}
-	paths, err := New(tmpdir.Path)
+	tmpdir.CreateFile(".proxy.yml", oneData)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
 	if _, ok := paths.Match("/"); !ok {
 		t.Fail()
-	}
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
 	}
 }
 
@@ -151,7 +140,8 @@ func TestPaths_Add(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	paths, err := New(tmpdir.Path)
+	defer tmpdir.Close()
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -164,9 +154,6 @@ authorized_useragents:
 	}
 	paths.Add("/", newPath)
 	paths.Remove("/")
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_success(t *testing.T) {
@@ -175,15 +162,12 @@ func TestPaths_MatchAndServe_file_success(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.CreateFile("one.info", ""); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
+	tmpdir.CreateFile("one.info", "")
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -199,11 +183,6 @@ func TestPaths_MatchAndServe_file_success(t *testing.T) {
 	}
 	if didMatch == false || w.Code != 200 || w.Body.String() != "Hello!" {
 		t.Fail()
-	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
 	}
 }
 
@@ -213,18 +192,15 @@ func TestPaths_MatchAndServe_file_success_headers(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 content_type: application/json
 `
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
+	tmpdir.CreateFile("one.info", oneData)
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -242,10 +218,6 @@ content_type: application/json
 		t.Fail()
 	}
 
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_failure_redirect(t *testing.T) {
@@ -254,20 +226,17 @@ func TestPaths_MatchAndServe_file_failure_redirect(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 authorized_useragents:
   - none
 on_failure:
   redirect: https://aws.amazon.com`
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
+	tmpdir.CreateFile("one.info", oneData)
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -285,11 +254,6 @@ on_failure:
 	if didMatch == false || w.Code != 301 {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_failure_render(t *testing.T) {
@@ -298,26 +262,19 @@ func TestPaths_MatchAndServe_file_failure_render(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 authorized_useragents:
   - none
 on_failure:
   render: /index.html`
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.CreateFile("index.html.info", ""); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.CreateFile("index.html", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	tmpdir.CreateFile("one.info", oneData)
+	tmpdir.CreateFile("index.html.info", "")
+	tmpdir.CreateFile("index.html", "Hello!")
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -335,11 +292,6 @@ on_failure:
 	if didMatch == false || w.Code != 200 || w.Body.String() != "Hello!" {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_notfound(t *testing.T) {
@@ -348,9 +300,10 @@ func TestPaths_MatchAndServe_notfound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer tmpdir.Close()
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -368,11 +321,6 @@ func TestPaths_MatchAndServe_notfound(t *testing.T) {
 	if didMatch == true {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_failure_render_notfound(t *testing.T) {
@@ -381,20 +329,17 @@ func TestPaths_MatchAndServe_file_failure_render_notfound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 authorized_useragents:
   - none
 on_failure:
   render: /index.html`
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
+	tmpdir.CreateFile("one.info", oneData)
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -408,11 +353,6 @@ on_failure:
 	if _, err := paths.MatchAndServe(w, req); err.Error() != "path not found" {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_failure_render_meme(t *testing.T) {
@@ -421,18 +361,14 @@ func TestPaths_MatchAndServe_file_failure_render_meme(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 authorized_useragents:
   - none`
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
-
+	tmpdir.CreateFile("one.info", oneData)
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -450,11 +386,6 @@ authorized_useragents:
 	if didHost {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_Serve_success(t *testing.T) {
@@ -463,15 +394,12 @@ func TestPaths_Serve_success(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
-	if err := tmpdir.CreateFile("one.info", ""); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
+	tmpdir.CreateFile("one.info", "")
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -488,11 +416,6 @@ func TestPaths_Serve_success(t *testing.T) {
 	if w.Code != 200 || w.Body.String() != "Hello!" {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_Serve_notfound(t *testing.T) {
@@ -501,9 +424,10 @@ func TestPaths_Serve_notfound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer tmpdir.Close()
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -516,11 +440,6 @@ func TestPaths_Serve_notfound(t *testing.T) {
 	if err := paths.Serve(w, req); err.Error() != "not_found render page not found" {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_Serve_success_headers(t *testing.T) {
@@ -529,18 +448,15 @@ func TestPaths_Serve_success_headers(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 	oneData := `
 content_type: application/json
 `
-	if err := tmpdir.CreateFile("one.info", oneData); err != nil {
-		t.Error(err)
-	}
+	tmpdir.CreateFile("one.info", oneData)
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -558,11 +474,6 @@ content_type: application/json
 	if w.Code != 200 || w.Body.String() != "Hello!" || contentHeader != "application/json" {
 		t.Fail()
 	}
-
-	// Close
-	if err := tmpdir.Close(); err != nil {
-		t.Error(err)
-	}
 }
 
 func TestPaths_MatchAndServe_file_noinfo(t *testing.T) {
@@ -571,12 +482,11 @@ func TestPaths_MatchAndServe_file_noinfo(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := tmpdir.CreateFile("one", "Hello!"); err != nil {
-		t.Error(err)
-	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("one", "Hello!")
 
 	// Create paths object
-	paths, err := New(tmpdir.Path)
+	paths, err := NewDefaultTest(tmpdir.Path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -593,9 +503,109 @@ func TestPaths_MatchAndServe_file_noinfo(t *testing.T) {
 	if didMatch == false || w.Code != 200 || w.Body.String() != "Hello!" {
 		t.Fail()
 	}
+}
 
-	// Close
-	if err := tmpdir.Close(); err != nil {
+func TestPaths_Reload_globalconditionals_makeNone(t *testing.T) {
+	serverRoot, err := NewTempDir()
+	if err != nil {
 		t.Error(err)
+	}
+	defer serverRoot.Close()
+
+	condsRoot, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer condsRoot.Close()
+
+	if _, err := NewDefault(serverRoot.Path, condsRoot.Path); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestPaths_Reload_globalconditionals_one(t *testing.T) {
+	serverRoot, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer serverRoot.Close()
+	serverRoot.CreateFile("one", "hello")
+
+	condsRoot, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer condsRoot.Close()
+
+	uaBlock := makeUABlacklist("target")
+	condsRoot.CreateFile("test.yml", uaBlock)
+
+	paths, err := NewDefault(serverRoot.Path, condsRoot.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	req := httptest.NewRequest("GET", "/one", nil)
+	w := httptest.NewRecorder()
+
+	req.Header.Set("User-Agent", "target")
+
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if didMatch {
+		t.Fail()
+	}
+}
+
+func TestPaths_Reload_globalconditionals_two(t *testing.T) {
+	serverRoot, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer serverRoot.Close()
+	serverRoot.CreateFile("one", "hello")
+
+	condsRoot, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer condsRoot.Close()
+
+	uaBlockTarget := makeUABlacklist("target")
+	condsRoot.CreateFile("test.yml", uaBlockTarget)
+
+	uaBlockTargetOne := makeUABlacklist("target1")
+	condsRoot.CreateFile("test1.yml", uaBlockTargetOne)
+
+	paths, err := NewDefault(serverRoot.Path, condsRoot.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// target request
+	req := httptest.NewRequest("GET", "/one", nil)
+	w := httptest.NewRecorder()
+	req.Header.Set("User-Agent", "target")
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+	if didMatch {
+		t.Fail()
+	}
+
+	// target1 request
+	reqTwo := httptest.NewRequest("GET", "/one", nil)
+	wTwo := httptest.NewRecorder()
+	reqTwo.Header.Set("User-Agent", "target1")
+	didMatchTwo, err := paths.MatchAndServe(wTwo, reqTwo)
+	if err != nil {
+		t.Error(err)
+	}
+	if didMatchTwo {
+		t.Fail()
 	}
 }
