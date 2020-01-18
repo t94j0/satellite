@@ -1,0 +1,12 @@
+server_root: /var/www/html
+listen: :443
+index: /index.html
+log_level: debug
+
+server_header: Apache/2.4.1 (Unix)
+
+geoip_path: /var/lib/satellite/GeoLite2-Country.mmdb
+
+ssl:
+  key: /etc/satellite/keys/key.pem
+  cert: /etc/satellite/keys/cert.pem

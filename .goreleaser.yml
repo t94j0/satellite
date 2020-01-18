@@ -1,0 +1,58 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+- env:
+    - CGO_ENABLED=0
+  main: ./satellite/
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+nfpms:
+  - id: satellite
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    homepage: https://github.com/t94j0/satellite
+    maintainer: Max Harley <maxh@maxh.io>
+    description: easy-to-use payload hosting
+    license: MIT
+    dependencies:
+      - openssl
+    scripts:
+      postinstall: ".config/scripts/postinstall.sh"
+    formats:
+      - deb
+      - rpm
+    empty_folders:
+      - /var/www/html
+    files:
+      ".config/etc/satellite/config.yml": "/etc/satellite/config.yml"
+      ".config/lib/systemd/system/satellite.service": "/lib/systemd/system/satellite.service"
+      ".config/var/lib/satellite/GeoLite2-Country.mmdb": "/var/lib/satellite/GeoLite2-Country.mmdb"
+      
+brews:
+  - name: satellite
+    skip_upload: true
+    github:
+      owner: t94j0
+      name: homebrew-security
+    url_template: "https://github.com/t94j0/satellite/releases/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: Max Harley
+      email: maxh@maxh.io
+    folder: Formula
+    homepage: "https://github.com/t94j0/satellite"
+    description: "easy-to-use payload hosting"
+    install: |
+      bin.install "satellite"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
