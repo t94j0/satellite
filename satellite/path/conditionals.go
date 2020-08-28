@@ -90,6 +90,8 @@ func parseRemoteAddr(ipPort string) net.IP {
 }
 
 // ShouldHost returns when an HTTP request should be hosted or not
+//
+// TODO: Return a string with the reason why a condition failed
 func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
 	// Not Serving
 	if c.NotServing {

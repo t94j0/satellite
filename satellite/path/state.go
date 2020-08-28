@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"net"
 
+	// Used for gosql
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	"github.com/prologic/bitcask"

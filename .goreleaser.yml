@@ -1,11 +1,12 @@
+---
 before:
   hooks:
     - go mod tidy
 
 builds:
-- env:
-    - CGO_ENABLED=0
-  main: ./satellite/
+  - env:
+      - CGO_ENABLED=0
+    main: ./satellite/
 
 checksum:
   name_template: 'checksums.txt'
@@ -33,7 +34,7 @@ nfpms:
       ".config/etc/satellite/config.yml": "/etc/satellite/config.yml"
       ".config/lib/systemd/system/satellite.service": "/lib/systemd/system/satellite.service"
       ".config/var/lib/satellite/GeoLite2-Country.mmdb": "/var/lib/satellite/GeoLite2-Country.mmdb"
-      
+
 brews:
   - name: satellite
     skip_upload: true
@@ -54,5 +55,5 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - '^docs:'
+      - '^test:'

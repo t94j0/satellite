@@ -11,7 +11,7 @@ Satellite is an web payload hosting service which filters requests to ensure the
 
 2. Create file to serve
 
-`echo "<h1>It worked!</h1>" > /var/www/html/index.html`
+`echo '<h1>It worked!</h1>' > /var/www/html/index.html`
 
 3. Create filtering file for index.html
 

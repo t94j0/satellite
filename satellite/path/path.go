@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 
+	"github.com/pkg/errors"
 	"github.com/t94j0/satellite/crypto/tls"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httputil"
@@ -43,7 +45,7 @@ type Path struct {
 		FileOutput string `yaml:"file_output"`
 	} `yaml:"credential_capture,omitempty"`
 
-	conditions RequestConditions
+	Conditions RequestConditions `yaml:",inline"`
 }
 
 // NewPath parses a yaml file path to create a new Path object
@@ -64,12 +66,6 @@ func NewPathData(data []byte) (*Path, error) {
 		return &newInfo, err
 	}
 
-	conds, err := NewRequestConditions(data)
-	if err != nil {
-		return nil, err
-	}
-	newInfo.conditions = conds
-
 	return &newInfo, nil
 }
 
@@ -83,7 +79,7 @@ func NewPathArray(path string) ([]*Path, error) {
 	return NewPathArrayData(data)
 }
 
-// NewPathArrayData
+// NewPathArrayData create path array based on data
 func NewPathArrayData(data []byte) ([]*Path, error) {
 	var newPathArr []*Path
 
@@ -114,13 +110,63 @@ func (f *Path) ContentHeaders() map[string]string {
 }
 
 // ShouldHost does the checking to see if the requested file should be given to a target
-func (f *Path) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
-	shouldHost := f.conditions.ShouldHost(req, state, gip)
+func (f *Path) ShouldHost(req *http.Request, state *State, gipDB geoip.DB) bool {
+	shouldHost := f.Conditions.ShouldHost(req, state, gipDB)
 	if shouldHost {
 		state.Hit(req)
 	}
 
 	return shouldHost
+}
+
+// FailRedirect will check if the redirect failure route is on and redirect to the new page
+func (f *Path) FailRedirect(w http.ResponseWriter, req *http.Request) bool {
+	if f.OnFailure.Redirect != "" {
+		http.Redirect(w, req, f.OnFailure.Redirect, http.StatusMovedPermanently)
+		return true
+	}
+	return false
+}
+
+// FailRender will check if the render failure route is on and serve the newPath
+func (f *Path) FailRender(w http.ResponseWriter, req *http.Request, check func(string) *Path, root string) (bool, error) {
+	if f.OnFailure.Render != "" {
+		newPath := check(f.OnFailure.Render)
+		if newPath == nil {
+			return false, errors.New("path does not exist")
+		}
+		if err := newPath.ServeHTTP(w, req, root); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func writeHeaders(w http.ResponseWriter, headers map[string]string) {
+	for name, value := range headers {
+		w.Header().Add(name, value)
+	}
+}
+
+// ServeHTTP is an http.HandlerFunc with error which chooses the correct way to
+// respond to an HTTP request
+//
+// A single path can be either a ProxyHost, Render, Redirect, or CredentialCapture
+func (f *Path) ServeHTTP(w http.ResponseWriter, req *http.Request, root string) error {
+	var err error
+	writeHeaders(w, f.ContentHeaders())
+	if f.ProxyHost != "" {
+		err = f.proxy(w, req)
+	} else if f.CredentialCapture.FileOutput != "" {
+		err = f.credentialCapture(w, req)
+	} else {
+		err = f.render(w, req, root)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Proxy executes a proxy
@@ -130,17 +176,16 @@ func (f *Path) proxy(w http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 	proxy := httputil.NewSingleHostReverseProxy(proxyURL)
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	proxy.Transport = tr
 	proxy.ServeHTTP(w, req)
 	return nil
 }
 
 // Render will render the path
-func (f *Path) render(w http.ResponseWriter, req *http.Request) error {
-	data, err := ioutil.ReadFile(f.HostedFile)
+func (f *Path) render(w http.ResponseWriter, req *http.Request, root string) error {
+	filePath := path.Join(root, f.HostedFile)
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -165,23 +210,5 @@ func (f *Path) credentialCapture(w http.ResponseWriter, req *http.Request) error
 		return err
 	}
 
-	return nil
-}
-
-// ServeHTTP is an http.HandlerFunc with error which chooses the correct way to respond to an HTTP request
-//
-// A single path can be either a ProxyHost, Render, or CredentialCapture
-func (f *Path) ServeHTTP(w http.ResponseWriter, req *http.Request) error {
-	var err error
-	if f.ProxyHost != "" {
-		err = f.proxy(w, req)
-	} else if f.CredentialCapture.FileOutput != "" {
-		err = f.credentialCapture(w, req)
-	} else {
-		err = f.render(w, req)
-	}
-	if err != nil {
-		return err
-	}
 	return nil
 }

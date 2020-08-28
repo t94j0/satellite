@@ -5,8 +5,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
+	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/satellite/geoip"
@@ -15,19 +15,18 @@ import (
 // Paths is the compilation of parsed paths
 type Paths struct {
 	base                 string
-	proxyPath            string
-	proxyRoot            string
+	pathsList            string
 	dbRoot               string
 	globalConditionsPath string
 
-	state *State
-	gip   geoip.DB
-	list  map[string]*Path
+	state   *State
+	geoipDB geoip.DB
+	list    []*Path
 }
 
 // New creates a new Paths variable from the specified base path
-func New(serverRoot, proxyPath, dbPath, gcp string) (*Paths, error) {
-	list := make(map[string]*Path)
+func New(serverRoot, pathsList, dbPath, gcp string) (*Paths, error) {
+	list := make([]*Path, 0)
 
 	state, err := NewState(path.Join(serverRoot, dbPath))
 	if err != nil {
@@ -36,8 +35,7 @@ func New(serverRoot, proxyPath, dbPath, gcp string) (*Paths, error) {
 
 	ret := &Paths{
 		base:                 serverRoot,
-		proxyPath:            path.Join(serverRoot, proxyPath),
-		proxyRoot:            proxyPath,
+		pathsList:            path.Join(serverRoot, pathsList),
 		dbRoot:               dbPath,
 		globalConditionsPath: gcp,
 
@@ -54,21 +52,21 @@ func New(serverRoot, proxyPath, dbPath, gcp string) (*Paths, error) {
 
 // NewDefault instantiates a Paths object with default configuration
 func NewDefault(serverRoot, gcp string) (*Paths, error) {
-	return New(serverRoot, ".proxy.yml", ".db", gcp)
+	return New(serverRoot, "pathList.yml", ".db", gcp)
 }
 
-// For many of the tests, we don't need to apply the global conditionals, so this helper function is for test cases
+// NewDefaultTest For many of the tests, we don't need to apply the global conditionals, so this helper function is for test cases
 func NewDefaultTest(serverRoot string) (*Paths, error) {
-	return New(serverRoot, ".proxy.yml", ".db", "")
+	return New(serverRoot, "pathList.yml", ".db", "")
 }
 
-// AddGeoIP
+// AddGeoIP adds the GeoIP path to this location
 func (paths *Paths) AddGeoIP(path string) error {
 	db, err := geoip.New(path)
 	if err != nil {
 		return err
 	}
-	paths.gip = db
+	paths.geoipDB = db
 
 	return nil
 }
@@ -78,85 +76,36 @@ func (paths *Paths) Len() int {
 	return len(paths.list)
 }
 
-// AddProxyList is a flat list of proxies to add in YAML format
-func (paths *Paths) AddProxyList(path string) error {
-	pathArr, err := NewPathArray(path)
-	if err != nil {
-		return err
-	}
-
-	for _, p := range pathArr {
-		paths.list[p.Path] = p
-	}
-
-	return nil
-}
-
-// Add adds a new Path to the global paths list
-func (paths *Paths) Add(path string, pathData *Path) {
-	paths.list[path] = pathData
-}
-
 // Match matches a page given a URI. It returns the specified Path and a boolean
 // value to determine if there was a page that matched the URI
 func (paths *Paths) Match(URI string) (*Path, bool) {
-	p, b := paths.list[URI]
-	return p, b
-}
-
-// Remove removes a path from the list of usable paths
-func (paths *Paths) Remove(path string) {
-	// Remove path from list in memory
-	delete(paths.list, path)
-	paths.state.Remove(path)
-}
-
-func (paths *Paths) RemoveDir(dir string) {
-	for k := range paths.list {
-		if strings.HasPrefix(k, dir) {
-			paths.Remove(k)
+	for _, v := range paths.list {
+		g := glob.MustCompile(v.Path, '/')
+		if g.Match(URI) {
+			return v, true
 		}
 	}
+	info, err := os.Stat(path.Join(paths.base, URI))
+	if err == nil && !info.IsDir() {
+		return &Path{Path: URI, HostedFile: URI}, true
+	}
+	return nil, false
 }
 
-// AddMeta adds a meta (or .info) file to the paths list
-func (paths *Paths) IngestMeta(oPath string) error {
-	tmpPath, err := NewPath(oPath)
+// ingestPathList adds the proxy from target path if it exists
+func (paths *Paths) ingestPathList() ([]*Path, error) {
+	pathsList := paths.pathsList
+	if _, err := os.Stat(pathsList); os.IsNotExist(err) {
+		// Do not fail if the pathList does not exist
+		return []*Path{}, nil
+	}
+
+	pathArr, err := NewPathArray(pathsList)
 	if err != nil {
-		return err
+		return []*Path{}, err
 	}
 
-	fullPath := strings.TrimSuffix(oPath, ".info")
-	tmpPath.HostedFile = fullPath
-
-	requestPath := strings.TrimPrefix(fullPath, paths.base)
-	tmpPath.Path = requestPath
-
-	paths.list[requestPath] = tmpPath
-	return nil
-}
-
-// AddPath adds a data path which is served when Path - Root is requested
-func (paths *Paths) IngestData(oPath string) error {
-	var tmpPath Path
-	tmpPath.HostedFile = oPath
-
-	requestPath := strings.TrimPrefix(oPath, paths.base)
-	tmpPath.Path = requestPath
-
-	paths.list[requestPath] = &tmpPath
-	return nil
-}
-
-// IngestProxy adds the proxy from target path if it exists
-func (paths *Paths) IngestProxy(oPath string) error {
-	proxyPath := paths.proxyPath
-	if _, err := os.Stat(proxyPath); !os.IsNotExist(err) {
-		if err := paths.AddProxyList(proxyPath); err != nil {
-			return err
-		}
-	}
-	return nil
+	return pathArr, nil
 }
 
 func (paths *Paths) collectConditionalsDirectory(targetPath string) (RequestConditions, error) {
@@ -193,7 +142,7 @@ func (paths *Paths) collectConditionalsDirectory(targetPath string) (RequestCond
 	return mergedConds, nil
 }
 
-func (paths *Paths) applyGlobalConditionals() error {
+func (paths *Paths) applyGlobalConditionals(p *Path) error {
 	gcp := paths.globalConditionsPath
 	if gcp == "" {
 		return nil
@@ -208,13 +157,24 @@ func (paths *Paths) applyGlobalConditionals() error {
 		return err
 	}
 
-	for i, p := range paths.list {
-		newP, err := MergeRequestConditions(globalConditions, p.conditions)
-		if err != nil {
-			return err
+	newP, err := MergeRequestConditions(globalConditions, p.Conditions)
+	if err != nil {
+		return err
+	}
+	p.Conditions = newP
+
+	return nil
+}
+
+func (paths *Paths) validate(pathList []*Path) error {
+	for _, v := range pathList {
+		// Ensure all path URI globbing compiles
+		if _, err := glob.Compile(v.Path); err != nil {
+			return errors.Wrap(err, "unable to compile glob: "+v.Path)
 		}
 
-		paths.list[i].conditions = newP
+		// Ensure paths are backed up by a file
+		// fmt.Println(v.Path)
 	}
 
 	return nil
@@ -222,49 +182,29 @@ func (paths *Paths) applyGlobalConditionals() error {
 
 // Reload refreshes the list of paths internally to Paths
 func (paths *Paths) Reload() error {
-	paths.list = make(map[string]*Path)
-	if err := filepath.Walk(paths.base, func(oPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if strings.HasSuffix(oPath, ".info") {
-			return paths.IngestMeta(oPath)
-		}
-		return paths.IngestData(oPath)
-	}); err != nil {
+	pathsList, err := paths.ingestPathList()
+	if err != nil {
 		return err
 	}
 
-	if err := paths.IngestProxy(paths.proxyPath); err != nil {
+	if err := paths.validate(pathsList); err != nil {
 		return err
 	}
 
-	paths.Remove("")
-	paths.RemoveDir("/" + paths.dbRoot)
-	paths.Remove("/" + paths.proxyRoot)
-
-	if err := paths.applyGlobalConditionals(); err != nil {
-		return err
-	}
+	paths.list = pathsList
 
 	return nil
 }
 
 // Serve serves a page without checking conditionals
 func (paths *Paths) Serve(w http.ResponseWriter, req *http.Request) error {
-	writeHeaders := func(w http.ResponseWriter, headers map[string]string) {
-		for name, value := range headers {
-			w.Header().Add(name, value)
-		}
-	}
 	uri := req.URL.Path
 	targetPath, exists := paths.Match(uri)
 	if !exists {
 		return errors.New("not_found render page not found")
 	}
 
-	writeHeaders(w, targetPath.ContentHeaders())
-	if err := targetPath.ServeHTTP(w, req); err != nil {
+	if err := targetPath.ServeHTTP(w, req, paths.base); err != nil {
 		return err
 	}
 	return nil
@@ -276,40 +216,36 @@ func (paths *Paths) Serve(w http.ResponseWriter, req *http.Request) error {
 //
 // Returns true when the file was served and false when a 404 page should be returned
 func (paths *Paths) MatchAndServe(w http.ResponseWriter, req *http.Request) (bool, error) {
-	writeHeaders := func(w http.ResponseWriter, headers map[string]string) {
-		for name, value := range headers {
-			w.Header().Add(name, value)
-		}
-	}
-
 	uri := req.URL.Path
-	targetPath, exists := paths.Match(uri)
+
+	matchedPath, exists := paths.Match(uri)
 	if !exists {
 		return false, nil
 	}
 
-	shouldHost := targetPath.ShouldHost(req, paths.state, paths.gip)
+	paths.applyGlobalConditionals(matchedPath)
 
-	if !shouldHost {
-		if targetPath.OnFailure.Redirect != "" {
-			http.Redirect(w, req, targetPath.OnFailure.Redirect, http.StatusMovedPermanently)
-			return true, nil
-		} else if targetPath.OnFailure.Render != "" {
-			newPath, found := paths.Match(targetPath.OnFailure.Render)
-			if !found {
-				return false, errors.New("path not found")
-			}
-			if err := newPath.ServeHTTP(w, req); err != nil {
-				return false, err
-			}
-			return true, nil
+	shouldHost := matchedPath.ShouldHost(req, paths.state, paths.geoipDB)
+	if shouldHost {
+		if err := matchedPath.ServeHTTP(w, req, paths.base); err != nil {
+			return false, err
 		}
-		return false, nil
+		return true, nil
 	}
 
-	writeHeaders(w, targetPath.ContentHeaders())
-	if err := targetPath.ServeHTTP(w, req); err != nil {
+	if matchedPath.FailRedirect(w, req) {
+		return true, nil
+	}
+
+	matched, err := matchedPath.FailRender(w, req, func(uri string) *Path {
+		newPath, found := paths.Match(matchedPath.OnFailure.Render)
+		if !found {
+			return nil
+		}
+		return newPath
+	}, paths.base)
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return matched, nil
 }

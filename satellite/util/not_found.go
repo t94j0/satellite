@@ -20,6 +20,7 @@ func NewNotFound(redirect, render string) (NotFound, error) {
 	}, nil
 }
 
+// ShouldWarn returns true if the redirect or render portion is empty
 func (nf NotFound) ShouldWarn() bool {
 	return nf.Redirect == "" && nf.Render == ""
 }

@@ -13,9 +13,9 @@ import (
 	"github.com/t94j0/satellite/satellite/util"
 )
 
-var RedirectNotFound = util.NotFound{"/index.html", ""}
-var RenderNotFound = util.NotFound{"", "/index.html"}
-var NoNotFound = util.NotFound{"", ""}
+var RedirectNotFound = util.NotFound{Redirect: "/index.html", Render: ""}
+var RenderNotFound = util.NotFound{Redirect: "", Render: "/index.html"}
+var NoNotFound = util.NotFound{Redirect: "", Render: ""}
 
 // TempDir Helper
 type TempDir struct {
