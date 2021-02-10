@@ -82,7 +82,11 @@ func (paths *Paths) Match(uri string) (*Path, bool) {
 	for _, v := range paths.list {
 		g := glob.MustCompile(v.Path, '/')
 		if g.Match(uri) {
-			v.HostedFile = uri
+			if _, err := os.Stat(path.Join(paths.base, v.Path)); err != nil {
+				v.HostedFile = v.Path
+			} else {
+				v.HostedFile = uri
+			}
 			return v, true
 		}
 	}
