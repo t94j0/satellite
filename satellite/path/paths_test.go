@@ -123,6 +123,41 @@ func TestNew_one(t *testing.T) {
 	}
 }
 
+func TestNew_different_hosted(t *testing.T) {
+	tmpdir, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer tmpdir.Close()
+	tmpdir.CreatePathList(`- path: /index.html
+  hosted_file: abc`)
+	tmpdir.CreateFile("abc", Sentinal)
+
+	paths, err := NewDefaultTest(tmpdir.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	req := httptest.NewRequest("GET", "/index.html", nil)
+	w := httptest.NewRecorder()
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !didMatch {
+		t.Fail()
+	}
+
+	data, err := ioutil.ReadAll(w.Result().Body)
+	if err != nil {
+		t.Fail()
+	}
+	if string(data) != Sentinal {
+		t.Fail()
+	}
+}
+
 func TestNew_proxy(t *testing.T) {
 	tmpdir, err := NewTempDir()
 	if err != nil {
