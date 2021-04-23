@@ -33,9 +33,6 @@ func NewRootHandler(ps *path.Paths, notFound util.NotFound, defaultIndex, server
 // if the file exist, the file should be hosted (based on Path rules), and if
 // the file should not be hosted
 func (h RootHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ja3 := getJA3(req)
-
-	h.log(req, ja3)
 
 	// Redirect to specified index
 	if req.URL.Path == "/" && h.defaultIndex != "" {
@@ -51,7 +48,10 @@ func (h RootHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	if !served {
+		h.log(req, 404)
 		h.notExistHandler(w, req)
+	} else {
+		h.log(req, 200)
 	}
 }
 
@@ -76,12 +76,14 @@ func (h RootHandler) notExistHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h RootHandler) log(req *http.Request, ja3 string) {
+func (h RootHandler) log(req *http.Request, respCode int) {
+	ja3 := getJA3(req)
 	log.WithFields(log.Fields{
 		"method":      req.Method,
 		"host":        req.Host,
 		"remote_addr": req.RemoteAddr,
 		"req_uri":     req.RequestURI,
 		"ja3":         ja3,
+		"response":    respCode,
 	}).Info("request")
 }
