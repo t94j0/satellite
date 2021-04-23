@@ -4,6 +4,7 @@ import (
 	"net"
 	rhttp "net/http"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/satellite/crypto/tls"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/satellite/handlers"
@@ -26,6 +27,7 @@ type Server struct {
 
 // New creates a new Server object
 func New(paths *path.Paths, ssl SSL, nf util.NotFound, serverPath, port, serverHeader, indexPath string, redirectHTTP bool) (Server, error) {
+	log.SetLevel(log.TraceLevel)
 	return Server{
 		paths:        paths,
 		serverPath:   serverPath,

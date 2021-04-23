@@ -11,6 +11,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/satellite/net/http"
 	"github.com/t94j0/satellite/net/http/httputil"
 	"github.com/t94j0/satellite/satellite/geoip"
@@ -90,11 +91,10 @@ func parseRemoteAddr(ipPort string) net.IP {
 }
 
 // ShouldHost returns when an HTTP request should be hosted or not
-//
-// TODO: Return a string with the reason why a condition failed
 func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
 	// Not Serving
 	if c.NotServing {
+		log.Trace("Not serving")
 		return false
 	}
 
@@ -104,10 +104,18 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 		for _, u := range c.AuthorizedUserAgents {
 			re := regexp.MustCompile(u)
 			if re.MatchString(req.UserAgent()) {
+				log.WithFields(log.Fields{
+					"user_agent": u,
+				}).Debug("Matched User Agent")
 				correctAgent = true
+			} else {
+				log.WithFields(log.Fields{
+					"user_agent": u,
+				}).Trace("Did not match authorized User Agent")
 			}
 		}
 	} else {
+		log.Trace("No Authorized User Agents")
 		correctAgent = true
 	}
 
@@ -116,8 +124,14 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 		for _, u := range c.BlacklistUserAgents {
 			re := regexp.MustCompile(u)
 			if re.MatchString(req.UserAgent()) {
+				log.WithFields(log.Fields{
+					"user_agent": u,
+				}).Debug("Blacklisted User Agent")
 				return false
 			}
+			log.WithFields(log.Fields{
+				"user_agent": u,
+			}).Trace("Did not match blacklisted User Agent")
 		}
 	}
 
@@ -129,18 +143,36 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 			if strings.Contains(r, "/") {
 				_, tmpRange, err := net.ParseCIDR(r)
 				if err != nil {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Debug("Could not parse IP range")
 					return false
 				}
 				if tmpRange.Contains(targetHost) {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Debug("Matched authorized IP range")
 					correctRange = true
+				} else {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Trace("Did not match authorized IP range")
 				}
 			} else {
 				if net.ParseIP(r).Equal(targetHost) {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Debug("Matched authorized IP range")
 					correctRange = true
+				} else {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Trace("Did not match authorized IP range")
 				}
 			}
 		}
 	} else {
+		log.Trace("No authorized IP ranges")
 		correctRange = true
 	}
 
@@ -150,12 +182,24 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 			_, tmpRange, err := net.ParseCIDR(r)
 			if err == nil {
 				if tmpRange.Contains(targetHost) {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Debug("Matched blacklisted IP range")
 					return false
 				}
+				log.WithFields(log.Fields{
+					"ip": r,
+				}).Trace("Did not match blacklisted IP range")
 			} else {
 				if net.ParseIP(r).Equal(targetHost) {
+					log.WithFields(log.Fields{
+						"ip": r,
+					}).Debug("Matched blacklisted IP range")
 					return false
 				}
+				log.WithFields(log.Fields{
+					"ip": r,
+				}).Trace("Did not match blacklisted IP range")
 			}
 		}
 	}
@@ -165,10 +209,17 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	if len(c.AuthorizedMethods) != 0 {
 		for _, m := range c.AuthorizedMethods {
 			if req.Method == m {
+				log.WithFields(log.Fields{
+					"method": m,
+				}).Debug("Matched HTTP method")
 				correctMethods = true
 			}
+			log.WithFields(log.Fields{
+				"method": m,
+			}).Trace("Did not match HTTP method")
 		}
 	} else {
+		log.Trace("No authorized methods")
 		correctMethods = true
 	}
 
@@ -177,10 +228,19 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	if len(c.AuthorizedHeaders) != 0 {
 		for k, v := range c.AuthorizedHeaders {
 			if req.Header.Get(k) == v {
+				log.WithFields(log.Fields{
+					"header_key":   k,
+					"header_value": v,
+				}).Debug("Matched header")
 				correctHeaders = true
 			}
+			log.WithFields(log.Fields{
+				"header_key":   k,
+				"header_value": v,
+			}).Trace("Did not match header")
 		}
 	} else {
+		log.Trace("No authorized methods")
 		correctHeaders = true
 	}
 
@@ -195,10 +255,20 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	if len(c.AuthorizedJA3) != 0 {
 		for _, j := range c.AuthorizedJA3 {
 			if ja3 == j {
+				log.WithFields(log.Fields{
+					"target_ja3": j,
+					"req_ja3":    ja3,
+				}).Debug("Authorized JA3 signature matched")
 				correctJA3 = true
+			} else {
+				log.WithFields(log.Fields{
+					"target_ja3": j,
+					"req_ja3":    ja3,
+				}).Trace("Authorized JA3 signature did not match")
 			}
 		}
 	} else {
+		log.Trace("No authorized JA3 signatures")
 		correctJA3 = true
 	}
 
@@ -237,10 +307,22 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	if c.Serve != 0 && req.URL != nil {
 		hits, err := state.GetHits(req.URL.Path)
 		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Debug("Error getting times served")
 			correctServe = false
 		}
 		if hits >= c.Serve {
+			log.WithFields(log.Fields{
+				"serve_limit":  c.Serve,
+				"times_served": hits,
+			}).Debug("Route exceeds times served")
 			correctServe = false
+		} else {
+			log.WithFields(log.Fields{
+				"serve_limit":  c.Serve,
+				"times_served": hits,
+			}).Trace("Route served")
 		}
 	}
 
@@ -248,6 +330,15 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	filledPrereq := true
 	if len(c.PrereqPaths) != 0 {
 		filledPrereq = state.MatchPaths(targetHost, c.PrereqPaths)
+		if filledPrereq {
+			log.WithFields(log.Fields{
+				"prereqs": c.PrereqPaths,
+			}).Debug("Matched prerequisites")
+		} else {
+			log.WithFields(log.Fields{
+				"prereqs": c.PrereqPaths,
+			}).Debug("Did not match prerequisites")
+		}
 	}
 
 	// GeoIP
@@ -255,6 +346,9 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	if gip.HasDB() {
 		cc, err := gip.CountryCode(targetHost)
 		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Debug("Error getting country code")
 			return false
 		}
 
@@ -263,7 +357,16 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 			correctGeoIP = false
 			for _, targetCC := range c.GeoIP.AuthorizedCountries {
 				if cc == targetCC {
+					log.WithFields(log.Fields{
+						"target_countrycode": targetCC,
+						"countrycode":        cc,
+					}).Debug("Matched authorized country code")
 					correctGeoIP = true
+				} else {
+					log.WithFields(log.Fields{
+						"target_countrycode": targetCC,
+						"countrycode":        cc,
+					}).Trace("Did not match authorized country code")
 				}
 			}
 		}
@@ -272,8 +375,16 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 		if len(c.GeoIP.BlacklistCountries) != 0 {
 			for _, targetCC := range c.GeoIP.BlacklistCountries {
 				if targetCC == cc {
+					log.WithFields(log.Fields{
+						"target_countrycode": targetCC,
+						"countrycode":        cc,
+					}).Debug("Matched blacklist country code")
 					return false
 				}
+				log.WithFields(log.Fields{
+					"target_countrycode": targetCC,
+					"countrycode":        cc,
+				}).Trace("Did not match blacklist country code")
 			}
 		}
 	}

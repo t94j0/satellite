@@ -55,13 +55,6 @@ func (h RootHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func getJA3(req *http.Request) string {
-	hash := md5.Sum([]byte(req.JA3Fingerprint))
-	out := make([]byte, 32)
-	hex.Encode(out, hash[:])
-	return string(out)
-}
-
 func (h RootHandler) notExistHandler(w http.ResponseWriter, req *http.Request) {
 	if h.notFound.Redirect != "" {
 		http.Redirect(w, req, h.notFound.Redirect, http.StatusMovedPermanently)
@@ -74,6 +67,13 @@ func (h RootHandler) notExistHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		io.WriteString(w, "404\n")
 	}
+}
+
+func getJA3(req *http.Request) string {
+	hash := md5.Sum([]byte(req.JA3Fingerprint))
+	out := make([]byte, 32)
+	hex.Encode(out, hash[:])
+	return string(out)
 }
 
 func (h RootHandler) log(req *http.Request, respCode int) {
