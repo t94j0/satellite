@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
+	"strings"
 
 	// Used for gosql
 	_ "github.com/mattn/go-sqlite3"
@@ -72,7 +73,8 @@ func (s *State) Hit(req *http.Request) error {
 	path := req.URL.Path
 
 	// ClientID Hit
-	remoteAddr := net.ParseIP(req.RemoteAddr)
+	ip := strings.Split(req.RemoteAddr, ":")[0]
+	remoteAddr := net.ParseIP(ip)
 	s.pathIdentifier.Hit(remoteAddr, path)
 
 	// DB Hit
