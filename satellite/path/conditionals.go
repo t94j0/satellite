@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gobwas/glob"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -24,6 +25,10 @@ type RequestConditions struct {
 	AuthorizedUserAgents []string `yaml:"authorized_useragents,omitempty"`
 	// BlacklistUserAgents are blacklisted user agents
 	BlacklistUserAgents []string `yaml:"blacklist_useragents,omitempty"`
+	// AuthorizedUserAgentsGlob is the authorized user agents for a file
+	AuthorizedUserAgentsGlob []string `yaml:"authorized_useragents_glob,omitempty"`
+	// BlacklistUserAgentsGlob are blacklisted user agents
+	BlacklistUserAgentsGlob []string `yaml:"blacklist_useragents_glob,omitempty"`
 	// AuthorizedIPRange is the authorized range of IPs who are allowed to access a file
 	AuthorizedIPRange []string `yaml:"authorized_iprange,omitempty"`
 	// BlacklistIPRange are blacklisted IPs
@@ -60,10 +65,16 @@ func NewRequestConditions(data []byte) (RequestConditions, error) {
 	}
 
 	regexes := append(conditions.AuthorizedUserAgents, conditions.BlacklistUserAgents...)
-
 	for _, ua := range regexes {
 		if _, err := regexp.Compile(ua); err != nil {
 			return conditions, errors.New(fmt.Sprintf("%s is not valid regex", ua))
+		}
+	}
+
+	globs := append(conditions.AuthorizedUserAgentsGlob, conditions.BlacklistUserAgentsGlob...)
+	for _, ua := range globs {
+		if _, err := glob.Compile(ua); err != nil {
+			return conditions, errors.New(fmt.Sprintf("%s is not valid glob", ua))
 		}
 	}
 
@@ -123,6 +134,58 @@ func (c *RequestConditions) blacklistUserAgents(req *http.Request) bool {
 	for _, u := range c.BlacklistUserAgents {
 		re := regexp.MustCompile(u)
 		if re.MatchString(req.UserAgent()) {
+			log.WithFields(log.Fields{
+				"user_agent":        req.UserAgent(),
+				"target_user_agent": u,
+			}).Debug("Blacklisted User Agent")
+			return false
+		}
+		log.WithFields(log.Fields{
+			"user_agent":        req.UserAgent(),
+			"target_user_agent": u,
+		}).Trace("Did not match blacklisted User Agent")
+	}
+
+	return true
+}
+
+func (c *RequestConditions) authorizedUserAgentsGlob(req *http.Request) bool {
+	correctAgent := false
+	userAgent := req.UserAgent()
+
+	if len(c.AuthorizedUserAgentsGlob) == 0 {
+		log.Trace("No Authorized User Agents")
+		return true
+	}
+
+	for _, u := range c.AuthorizedUserAgentsGlob {
+		g := glob.MustCompile(u)
+		if g.Match(userAgent) {
+			log.WithFields(log.Fields{
+				"user_agent":        userAgent,
+				"target_user_agent": u,
+			}).Debug("Matched User Agent")
+			correctAgent = true
+		} else {
+			log.WithFields(log.Fields{
+				"user_agent":        userAgent,
+				"target_user_agent": u,
+			}).Trace("Did not match authorized User Agent")
+		}
+	}
+
+	return correctAgent
+}
+
+func (c *RequestConditions) blacklistUserAgentsGlob(req *http.Request) bool {
+	if len(c.BlacklistUserAgentsGlob) == 0 {
+		log.Trace("No Blacklist User Agents")
+		return true
+	}
+
+	for _, u := range c.BlacklistUserAgentsGlob {
+		g := glob.MustCompile(u)
+		if g.Match(req.UserAgent()) {
 			log.WithFields(log.Fields{
 				"user_agent":        req.UserAgent(),
 				"target_user_agent": u,
@@ -442,6 +505,14 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 		return false
 	}
 
+	if ok := c.authorizedUserAgentsGlob(req); !ok {
+		return false
+	}
+
+	if ok := c.blacklistUserAgentsGlob(req); !ok {
+		return false
+	}
+
 	if ok := c.authorizedIPRange(req); !ok {
 		return false
 	}
@@ -470,7 +541,6 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 		return false
 	}
 
-	// Prereq Paths
 	if ok := c.prereqMatch(req, state); !ok {
 		return false
 	}

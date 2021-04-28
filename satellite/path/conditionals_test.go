@@ -141,41 +141,6 @@ func TestMergeRequestConditions_three(t *testing.T) {
 	}
 }
 
-func TestRequestConditions_NewRequestConditions_au_fail(t *testing.T) {
-	data := `
-authorized_useragents:
-  - *Chrome*
-`
-	_, err := NewRequestConditions([]byte(data))
-	if err == nil {
-		t.Fail()
-	}
-}
-
-func TestRequestConditions_NewRequestConditions_bu_fail(t *testing.T) {
-	data := `
-blacklist_useragents:
-  - *Chrome*
-`
-	_, err := NewRequestConditions([]byte(data))
-	if err == nil {
-		t.Fail()
-	}
-}
-
-func TestRequestConditions_NewRequestConditions_both_fail(t *testing.T) {
-	data := `
-blacklist_useragents:
-  - *Chrome*
-authorized_useragents:
-	- *Chrome*
-`
-	_, err := NewRequestConditions([]byte(data))
-	if err == nil {
-		t.Fail()
-	}
-}
-
 func TestRequestConditions_ShouldHost_auth_ua_succeed(t *testing.T) {
 	// Create HTTP Request
 	header := http.Header(make(map[string][]string))
@@ -231,24 +196,6 @@ authorized_useragents:
 
 	if err := RemoveDB(file); err != nil {
 		t.Error(err)
-	}
-}
-
-func TestRequestConditions_ShouldHost_auth_ua_regex_fail(t *testing.T) {
-	data := `
-authorized_useragents:
-  - none\`
-	if _, err := NewRequestConditions([]byte(data)); err == nil {
-		t.Fail()
-	}
-}
-
-func TestRequestConditions_ShouldHost_bl_ua_regex_fail(t *testing.T) {
-	data := `
-blacklist_useragents:
-  - none\`
-	if _, err := NewRequestConditions([]byte(data)); err == nil {
-		t.Fail()
 	}
 }
 
@@ -331,6 +278,157 @@ blacklist_useragents:
 		t.Error(err)
 	}
 	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_NewRequestConditions_au_fail(t *testing.T) {
+	data := `
+authorized_useragents:
+  - *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestRequestConditions_NewRequestConditions_bu_fail(t *testing.T) {
+	data := `
+blacklist_useragents:
+  - *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestRequestConditions_NewRequestConditions_both_fail(t *testing.T) {
+	data := `
+blacklist_useragents:
+  - *Chrome*
+authorized_useragents:
+	- *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestRequestConditions_ShouldHost_au_uag_success(t *testing.T) {
+	// Create HTTP Request
+	header := http.Header(make(map[string][]string))
+	header.Add("User-Agent", "TEST123")
+	mockRequest := &http.Request{Header: header}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create RequestConditions object
+	data := `
+authorized_useragents_glob:
+  - TEST*
+`
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_ShouldHost_au_uag_fail(t *testing.T) {
+	// Create HTTP Request
+	header := http.Header(make(map[string][]string))
+	header.Add("User-Agent", "TEST123")
+	mockRequest := &http.Request{Header: header}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create RequestConditions object
+	data := `
+authorized_useragents_glob:
+  - ABC
+`
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_ShouldHost_bl_uag_success(t *testing.T) {
+	// Create HTTP Request
+	header := http.Header(make(map[string][]string))
+	header.Add("User-Agent", "TEST123")
+	mockRequest := &http.Request{Header: header}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create RequestConditions object
+	data := `
+blacklist_useragents_glob:
+  - TEST*
+`
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRequestConditions_ShouldHost_bl_uag_fail(t *testing.T) {
+	// Create HTTP Request
+	header := http.Header(make(map[string][]string))
+	header.Add("User-Agent", "TEST123")
+	mockRequest := &http.Request{Header: header}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create RequestConditions object
+	data := `
+blacklist_useragents_glob:
+  - TEST
+`
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if !conditions.ShouldHost(mockRequest, state, geoip.DB{}) {
 		t.Fail()
 	}
 
