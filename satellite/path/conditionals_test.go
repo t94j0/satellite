@@ -141,6 +141,41 @@ func TestMergeRequestConditions_three(t *testing.T) {
 	}
 }
 
+func TestRequestConditions_NewRequestConditions_au_fail(t *testing.T) {
+	data := `
+authorized_useragents:
+  - *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestRequestConditions_NewRequestConditions_bu_fail(t *testing.T) {
+	data := `
+blacklist_useragents:
+  - *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestRequestConditions_NewRequestConditions_both_fail(t *testing.T) {
+	data := `
+blacklist_useragents:
+  - *Chrome*
+authorized_useragents:
+	- *Chrome*
+`
+	_, err := NewRequestConditions([]byte(data))
+	if err == nil {
+		t.Fail()
+	}
+}
+
 func TestRequestConditions_ShouldHost_auth_ua_succeed(t *testing.T) {
 	// Create HTTP Request
 	header := http.Header(make(map[string][]string))

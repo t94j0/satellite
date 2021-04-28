@@ -59,13 +59,9 @@ func NewRequestConditions(data []byte) (RequestConditions, error) {
 		return conditions, err
 	}
 
-	for _, ua := range conditions.AuthorizedUserAgents {
-		if _, err := regexp.Compile(ua); err != nil {
-			return conditions, errors.New(fmt.Sprintf("%s is not valid regex", ua))
-		}
-	}
+	regexes := append(conditions.AuthorizedUserAgents, conditions.BlacklistUserAgents...)
 
-	for _, ua := range conditions.BlacklistUserAgents {
+	for _, ua := range regexes {
 		if _, err := regexp.Compile(ua); err != nil {
 			return conditions, errors.New(fmt.Sprintf("%s is not valid regex", ua))
 		}
@@ -90,161 +86,186 @@ func parseRemoteAddr(ipPort string) net.IP {
 	return net.ParseIP(targetIP)
 }
 
-// ShouldHost returns when an HTTP request should be hosted or not
-func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
-	// Not Serving
-	if c.NotServing {
-		log.Trace("Not serving")
-		return false
+func (c *RequestConditions) authorizedUserAgents(req *http.Request) bool {
+	correctAgent := false
+	userAgent := req.UserAgent()
+
+	if len(c.AuthorizedUserAgents) == 0 {
+		log.Trace("No Authorized User Agents")
+		return true
 	}
 
-	// Agent
-	correctAgent := false
-	if len(c.AuthorizedUserAgents) != 0 {
-		for _, u := range c.AuthorizedUserAgents {
-			re := regexp.MustCompile(u)
-			if re.MatchString(req.UserAgent()) {
+	for _, u := range c.AuthorizedUserAgents {
+		re := regexp.MustCompile(u)
+		if re.MatchString(userAgent) {
+			log.WithFields(log.Fields{
+				"user_agent":        userAgent,
+				"target_user_agent": u,
+			}).Debug("Matched User Agent")
+			correctAgent = true
+		} else {
+			log.WithFields(log.Fields{
+				"user_agent":        userAgent,
+				"target_user_agent": u,
+			}).Trace("Did not match authorized User Agent")
+		}
+	}
+
+	return correctAgent
+}
+
+func (c *RequestConditions) blacklistUserAgents(req *http.Request) bool {
+	if len(c.BlacklistUserAgents) == 0 {
+		log.Trace("No Blacklist User Agents")
+		return true
+	}
+
+	for _, u := range c.BlacklistUserAgents {
+		re := regexp.MustCompile(u)
+		if re.MatchString(req.UserAgent()) {
+			log.WithFields(log.Fields{
+				"user_agent":        req.UserAgent(),
+				"target_user_agent": u,
+			}).Debug("Blacklisted User Agent")
+			return false
+		}
+		log.WithFields(log.Fields{
+			"user_agent":        req.UserAgent(),
+			"target_user_agent": u,
+		}).Trace("Did not match blacklisted User Agent")
+	}
+
+	return true
+}
+
+func (c *RequestConditions) authorizedIPRange(req *http.Request) bool {
+	targetHost := parseRemoteAddr(req.RemoteAddr)
+	correctRange := false
+
+	if len(c.AuthorizedIPRange) == 0 {
+		log.Trace("No authorized IP ranges")
+		return true
+	}
+
+	for _, r := range c.AuthorizedIPRange {
+		if strings.Contains(r, "/") {
+			_, tmpRange, err := net.ParseCIDR(r)
+			if err != nil {
 				log.WithFields(log.Fields{
-					"user_agent": u,
-				}).Debug("Matched User Agent")
-				correctAgent = true
+					"ip": r,
+				}).Debug("Could not parse IP range")
+				return false
+			}
+			if tmpRange.Contains(targetHost) {
+				log.WithFields(log.Fields{
+					"ip": r,
+				}).Debug("Matched authorized IP range")
+				correctRange = true
 			} else {
 				log.WithFields(log.Fields{
-					"user_agent": u,
-				}).Trace("Did not match authorized User Agent")
+					"ip": r,
+				}).Trace("Did not match authorized IP range")
+			}
+		} else {
+			if net.ParseIP(r).Equal(targetHost) {
+				log.WithFields(log.Fields{
+					"ip": r,
+				}).Debug("Matched authorized IP range")
+				correctRange = true
+			} else {
+				log.WithFields(log.Fields{
+					"ip": r,
+				}).Trace("Did not match authorized IP range")
 			}
 		}
-	} else {
-		log.Trace("No Authorized User Agents")
-		correctAgent = true
 	}
 
-	// Blacklist User Agents
-	if len(c.BlacklistUserAgents) != 0 {
-		for _, u := range c.BlacklistUserAgents {
-			re := regexp.MustCompile(u)
-			if re.MatchString(req.UserAgent()) {
+	return correctRange
+}
+
+func (c *RequestConditions) blacklistIPRange(req *http.Request) bool {
+	targetHost := parseRemoteAddr(req.RemoteAddr)
+
+	if len(c.BlacklistIPRange) == 0 {
+		return true
+	}
+
+	for _, r := range c.BlacklistIPRange {
+		_, tmpRange, err := net.ParseCIDR(r)
+		if err == nil {
+			if tmpRange.Contains(targetHost) {
 				log.WithFields(log.Fields{
-					"user_agent": u,
-				}).Debug("Blacklisted User Agent")
+					"ip": r,
+				}).Debug("Matched blacklisted IP range")
 				return false
 			}
 			log.WithFields(log.Fields{
-				"user_agent": u,
-			}).Trace("Did not match blacklisted User Agent")
-		}
-	}
-
-	// IP Range
-	targetHost := parseRemoteAddr(req.RemoteAddr)
-	correctRange := false
-	if len(c.AuthorizedIPRange) != 0 {
-		for _, r := range c.AuthorizedIPRange {
-			if strings.Contains(r, "/") {
-				_, tmpRange, err := net.ParseCIDR(r)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Debug("Could not parse IP range")
-					return false
-				}
-				if tmpRange.Contains(targetHost) {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Debug("Matched authorized IP range")
-					correctRange = true
-				} else {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Trace("Did not match authorized IP range")
-				}
-			} else {
-				if net.ParseIP(r).Equal(targetHost) {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Debug("Matched authorized IP range")
-					correctRange = true
-				} else {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Trace("Did not match authorized IP range")
-				}
-			}
-		}
-	} else {
-		log.Trace("No authorized IP ranges")
-		correctRange = true
-	}
-
-	// Blacklist IP range
-	if len(c.BlacklistIPRange) != 0 {
-		for _, r := range c.BlacklistIPRange {
-			_, tmpRange, err := net.ParseCIDR(r)
-			if err == nil {
-				if tmpRange.Contains(targetHost) {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Debug("Matched blacklisted IP range")
-					return false
-				}
+				"ip": r,
+			}).Trace("Did not match blacklisted IP range")
+		} else {
+			if net.ParseIP(r).Equal(targetHost) {
 				log.WithFields(log.Fields{
 					"ip": r,
-				}).Trace("Did not match blacklisted IP range")
-			} else {
-				if net.ParseIP(r).Equal(targetHost) {
-					log.WithFields(log.Fields{
-						"ip": r,
-					}).Debug("Matched blacklisted IP range")
-					return false
-				}
-				log.WithFields(log.Fields{
-					"ip": r,
-				}).Trace("Did not match blacklisted IP range")
-			}
-		}
-	}
-
-	// Method
-	correctMethods := false
-	if len(c.AuthorizedMethods) != 0 {
-		for _, m := range c.AuthorizedMethods {
-			if req.Method == m {
-				log.WithFields(log.Fields{
-					"method": m,
-				}).Debug("Matched HTTP method")
-				correctMethods = true
+				}).Debug("Matched blacklisted IP range")
+				return false
 			}
 			log.WithFields(log.Fields{
-				"method": m,
-			}).Trace("Did not match HTTP method")
+				"ip": r,
+			}).Trace("Did not match blacklisted IP range")
 		}
-	} else {
+	}
+	return true
+}
+
+func (c *RequestConditions) authorizedMethods(req *http.Request) bool {
+	correctMethods := false
+
+	if len(c.AuthorizedMethods) == 0 {
 		log.Trace("No authorized methods")
-		correctMethods = true
+		return true
 	}
 
-	// Headers
+	for _, m := range c.AuthorizedMethods {
+		if req.Method == m {
+			log.WithFields(log.Fields{
+				"method": m,
+			}).Debug("Matched HTTP method")
+			correctMethods = true
+		}
+		log.WithFields(log.Fields{
+			"method": m,
+		}).Trace("Did not match HTTP method")
+	}
+
+	return correctMethods
+}
+
+func (c *RequestConditions) authorizedHeaders(req *http.Request) bool {
 	correctHeaders := false
-	if len(c.AuthorizedHeaders) != 0 {
-		for k, v := range c.AuthorizedHeaders {
-			if req.Header.Get(k) == v {
-				log.WithFields(log.Fields{
-					"header_key":   k,
-					"header_value": v,
-				}).Debug("Matched header")
-				correctHeaders = true
-			}
+
+	if len(c.AuthorizedHeaders) == 0 {
+		log.Trace("No authorized methods")
+		return true
+	}
+
+	for k, v := range c.AuthorizedHeaders {
+		if req.Header.Get(k) == v {
 			log.WithFields(log.Fields{
 				"header_key":   k,
 				"header_value": v,
-			}).Trace("Did not match header")
+			}).Debug("Matched header")
+			correctHeaders = true
 		}
-	} else {
-		log.Trace("No authorized methods")
-		correctHeaders = true
+		log.WithFields(log.Fields{
+			"header_key":   k,
+			"header_value": v,
+		}).Trace("Did not match header")
 	}
 
-	// JA3
+	return correctHeaders
+}
+
+func (c *RequestConditions) authorizedJA3(req *http.Request) bool {
 	hash := md5.Sum([]byte(req.JA3Fingerprint))
 	out := make([]byte, 32)
 	hex.Encode(out, hash[:])
@@ -252,27 +273,30 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 
 	correctJA3 := false
 
-	if len(c.AuthorizedJA3) != 0 {
-		for _, j := range c.AuthorizedJA3 {
-			if ja3 == j {
-				log.WithFields(log.Fields{
-					"target_ja3": j,
-					"req_ja3":    ja3,
-				}).Debug("Authorized JA3 signature matched")
-				correctJA3 = true
-			} else {
-				log.WithFields(log.Fields{
-					"target_ja3": j,
-					"req_ja3":    ja3,
-				}).Trace("Authorized JA3 signature did not match")
-			}
-		}
-	} else {
+	if len(c.AuthorizedJA3) == 0 {
 		log.Trace("No authorized JA3 signatures")
-		correctJA3 = true
+		return true
 	}
 
-	// Exec
+	for _, j := range c.AuthorizedJA3 {
+		if ja3 == j {
+			log.WithFields(log.Fields{
+				"target_ja3": j,
+				"req_ja3":    ja3,
+			}).Debug("Authorized JA3 signature matched")
+			correctJA3 = true
+		} else {
+			log.WithFields(log.Fields{
+				"target_ja3": j,
+				"req_ja3":    ja3,
+			}).Trace("Authorized JA3 signature did not match")
+		}
+	}
+
+	return correctJA3
+}
+
+func (c *RequestConditions) authorizedExec(req *http.Request) bool {
 	correctExec := false
 	if c.Exec.ScriptPath != "" {
 		cmd := exec.Command(c.Exec.ScriptPath)
@@ -301,8 +325,10 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 	} else {
 		correctExec = true
 	}
+	return correctExec
+}
 
-	// Serve
+func (c *RequestConditions) serveLimit(req *http.Request, state *State) bool {
 	correctServe := true
 	if c.Serve != 0 && req.URL != nil {
 		hits, err := state.GetHits(req.URL.Path)
@@ -325,23 +351,32 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 			}).Trace("Route served")
 		}
 	}
+	return correctServe
+}
 
-	// Prereq Paths
+func (c *RequestConditions) prereqMatch(req *http.Request, state *State) bool {
 	filledPrereq := true
-	if len(c.PrereqPaths) != 0 {
-		filledPrereq = state.MatchPaths(targetHost, c.PrereqPaths)
-		if filledPrereq {
-			log.WithFields(log.Fields{
-				"prereqs": c.PrereqPaths,
-			}).Debug("Matched prerequisites")
-		} else {
-			log.WithFields(log.Fields{
-				"prereqs": c.PrereqPaths,
-			}).Debug("Did not match prerequisites")
-		}
+	if len(c.PrereqPaths) == 0 {
+		return true
 	}
 
-	// GeoIP
+	targetHost := parseRemoteAddr(req.RemoteAddr)
+	filledPrereq = state.MatchPaths(targetHost, c.PrereqPaths)
+	if filledPrereq {
+		log.WithFields(log.Fields{
+			"prereqs": c.PrereqPaths,
+		}).Debug("Matched prerequisites")
+	} else {
+		log.WithFields(log.Fields{
+			"prereqs": c.PrereqPaths,
+		}).Debug("Did not match prerequisites")
+	}
+
+	return filledPrereq
+}
+
+func (c *RequestConditions) geoipMatch(req *http.Request, gip geoip.DB) bool {
+	targetHost := parseRemoteAddr(req.RemoteAddr)
 	correctGeoIP := true
 	if gip.HasDB() {
 		cc, err := gip.CountryCode(targetHost)
@@ -388,6 +423,61 @@ func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoi
 			}
 		}
 	}
+	return correctGeoIP
+}
 
-	return correctAgent && correctRange && correctMethods && correctHeaders && correctJA3 && correctExec && correctServe && filledPrereq && correctGeoIP
+// ShouldHost returns when an HTTP request should be hosted or not
+func (c *RequestConditions) ShouldHost(req *http.Request, state *State, gip geoip.DB) bool {
+	// Not Serving
+	if c.NotServing {
+		log.Trace("Not serving")
+		return false
+	}
+
+	if ok := c.authorizedUserAgents(req); !ok {
+		return false
+	}
+
+	if ok := c.blacklistUserAgents(req); !ok {
+		return false
+	}
+
+	if ok := c.authorizedIPRange(req); !ok {
+		return false
+	}
+
+	if ok := c.blacklistIPRange(req); !ok {
+		return false
+	}
+
+	if ok := c.authorizedMethods(req); !ok {
+		return false
+	}
+
+	if ok := c.authorizedHeaders(req); !ok {
+		return false
+	}
+
+	if ok := c.authorizedJA3(req); !ok {
+		return false
+	}
+
+	if ok := c.authorizedExec(req); !ok {
+		return false
+	}
+
+	if ok := c.serveLimit(req, state); !ok {
+		return false
+	}
+
+	// Prereq Paths
+	if ok := c.prereqMatch(req, state); !ok {
+		return false
+	}
+
+	if ok := c.geoipMatch(req, gip); !ok {
+		return false
+	}
+
+	return true
 }
