@@ -85,5 +85,6 @@ func (h RootHandler) log(req *http.Request, respCode int) {
 		"req_uri":     req.RequestURI,
 		"ja3":         ja3,
 		"response":    respCode,
+		"user_agent":  req.UserAgent(),
 	}).Info("request")
 }
