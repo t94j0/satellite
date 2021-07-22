@@ -9,7 +9,7 @@ import (
 	// Used for gosql
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"github.com/prologic/bitcask"
+	"git.mills.io/prologic/bitcask"
 	"github.com/t94j0/satellite/net/http"
 )
 

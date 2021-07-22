@@ -11,7 +11,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.3.0
 	github.com/oschwald/maxminddb-golang v1.4.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/prologic/bitcask v0.3.4
+	git.mills.io/prologic/bitcask v0.3.4
 	github.com/refraction-networking/utls v0.0.0-20190909200633-43c36d3c1f57
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.4.0
