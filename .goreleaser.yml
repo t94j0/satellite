@@ -16,7 +16,7 @@ snapshot:
 
 nfpms:
   - id: satellite
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     homepage: https://github.com/t94j0/satellite
     maintainer: Max Harley <maxh@maxh.io>
     description: easy-to-use payload hosting
@@ -30,15 +30,23 @@ nfpms:
       - rpm
     empty_folders:
       - /var/www/html
-    files:
-      ".config/etc/satellite/config.yml": "/etc/satellite/config.yml"
-      ".config/lib/systemd/system/satellite.service": "/lib/systemd/system/satellite.service"
-      ".config/var/lib/satellite/GeoLite2-Country.mmdb": "/var/lib/satellite/GeoLite2-Country.mmdb"
+    contents:
+      - src: ".config/etc/satellite/config.yml"
+        dst: "/etc/satellite/config.yml"
+        type: config
+
+      - src: ".config/lib/systemd/system/satellite.service"
+        dst: "/lib/systemd/system/satellite.service"
+        type: config
+
+      - src: ".config/var/lib/satellite/GeoLite2-Country.mmdb"
+        dst: "/var/lib/satellite/GeoLite2-Country.mmdb"
+        type: config
 
 brews:
   - name: satellite
     skip_upload: true
-    github:
+    tap:
       owner: t94j0
       name: homebrew-security
     url_template: "https://github.com/t94j0/satellite/releases/{{ .Tag }}/{{ .ArtifactName }}"
