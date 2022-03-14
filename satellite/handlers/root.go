@@ -51,7 +51,8 @@ func (h RootHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Error(err)
 	}
 	if !served {
-		h.log(req, 404)
+		log.Debug("File not found. Redirecting to not_found")
+		h.log(req, 301)
 		h.notExistHandler(w, req)
 	} else {
 		h.log(req, 200)
