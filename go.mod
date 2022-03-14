@@ -18,5 +18,5 @@ require (
 	github.com/t94j0/array v0.0.0-20180426153242-68930562a6bd
 	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f
 	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.4.0
 )
