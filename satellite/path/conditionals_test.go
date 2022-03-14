@@ -1198,3 +1198,34 @@ func TestRequestConditions_ShouldHost_geoip_blacklist(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestRequestConditions_ShouldHost_geoip_blacklist_accept(t *testing.T) {
+	// Create HTTP Request
+	mockRequest := &http.Request{RemoteAddr: "5.250.176.20:54321"}
+
+	state, file, err := TemporaryDB()
+	if err != nil {
+		t.Error(err)
+	}
+
+	gip, err := createGeoIP()
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := `geoip:
+  blacklist_countries:
+    - US`
+
+	conditions, err := NewRequestConditions([]byte(data))
+	if err != nil {
+		t.Error(err)
+	}
+	if !conditions.ShouldHost(mockRequest, state, gip) {
+		t.Fail()
+	}
+
+	if err := RemoveDB(file); err != nil {
+		t.Error(err)
+	}
+}

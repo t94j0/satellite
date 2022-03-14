@@ -38,7 +38,7 @@ func (c *ClientID) Match(ip net.IP, targetList []string) bool {
 		return false
 	}
 
-	lastSubset := list[len(list)-len(targetList) : len(list)]
+	lastSubset := list[len(list)-len(targetList) : ]
 
 	for i := range lastSubset {
 		if lastSubset[i] != targetList[i] {

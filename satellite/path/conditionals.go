@@ -446,7 +446,7 @@ func (c *RequestConditions) geoipMatch(req *http.Request, gip geoip.DB) bool {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
-			}).Debug("Error getting country code")
+			}).Error("Error getting country code")
 			return false
 		}
 

@@ -20,7 +20,7 @@ type Paths struct {
 	globalConditionsPath string
 
 	state   *State
-	geoipDB geoip.DB
+	GeoipDB geoip.DB
 	list    []*Path
 }
 
@@ -66,7 +66,7 @@ func (paths *Paths) AddGeoIP(path string) error {
 	if err != nil {
 		return err
 	}
-	paths.geoipDB = db
+	paths.GeoipDB = db
 
 	return nil
 }
@@ -120,6 +120,10 @@ func (paths *Paths) collectConditionalsDirectory(targetPath string) (RequestCond
 	condsResult := make([]RequestConditions, 0)
 
 	collectWalkFunc := func(oPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if info.IsDir() {
 			return nil
 		}
@@ -233,7 +237,7 @@ func (paths *Paths) MatchAndServe(w http.ResponseWriter, req *http.Request) (boo
 
 	paths.applyGlobalConditionals(matchedPath)
 
-	shouldHost := matchedPath.ShouldHost(req, paths.state, paths.geoipDB)
+	shouldHost := matchedPath.ShouldHost(req, paths.state, paths.GeoipDB)
 	if shouldHost {
 		if err := matchedPath.ServeHTTP(w, req, paths.base); err != nil {
 			return false, err

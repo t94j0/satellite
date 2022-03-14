@@ -4,9 +4,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"io"
+	"net"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/t94j0/satellite/net/http"
+	"github.com/t94j0/satellite/satellite/geoip"
 	"github.com/t94j0/satellite/satellite/path"
 	"github.com/t94j0/satellite/satellite/util"
 )
@@ -76,8 +79,29 @@ func getJA3(req *http.Request) string {
 	return string(out)
 }
 
+func parseRemoteAddr(ipPort string) net.IP {
+	targetIP := strings.Split(ipPort, ":")[0]
+	return net.ParseIP(targetIP)
+}
+
+func getCountryCode(remoteAddr string, gip *geoip.DB) (string, error) {
+	targetHost := parseRemoteAddr(remoteAddr)
+	if gip.HasDB() {
+		cc, err := gip.CountryCode(targetHost)
+		if err != nil {
+			return "", err
+		}
+		return cc, nil
+	}
+	return "", nil
+}
+
 func (h RootHandler) log(req *http.Request, respCode int) {
 	ja3 := getJA3(req)
+	cc, err := getCountryCode(req.RemoteAddr, &h.paths.GeoipDB)
+	if err != nil {
+		log.Error(err)
+	}
 	log.WithFields(log.Fields{
 		"method":      req.Method,
 		"host":        req.Host,
@@ -86,5 +110,6 @@ func (h RootHandler) log(req *http.Request, respCode int) {
 		"ja3":         ja3,
 		"response":    respCode,
 		"user_agent":  req.UserAgent(),
+		"geo_ip": cc,
 	}).Info("request")
 }
