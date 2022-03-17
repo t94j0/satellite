@@ -111,6 +111,6 @@ func (h RootHandler) log(req *http.Request, respCode int) {
 		"ja3":         ja3,
 		"response":    respCode,
 		"user_agent":  req.UserAgent(),
-		"geo_ip": cc,
+		"geo_ip":      cc,
 	}).Info("request")
 }

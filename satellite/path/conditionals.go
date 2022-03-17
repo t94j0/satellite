@@ -281,8 +281,6 @@ func (c *RequestConditions) blacklistIPRange(req *http.Request) bool {
 }
 
 func (c *RequestConditions) authorizedMethods(req *http.Request) bool {
-	correctMethods := false
-
 	if len(c.AuthorizedMethods) == 0 {
 		log.Trace("No authorized methods")
 		return true
@@ -293,14 +291,14 @@ func (c *RequestConditions) authorizedMethods(req *http.Request) bool {
 			log.WithFields(log.Fields{
 				"method": m,
 			}).Debug("Matched HTTP method")
-			correctMethods = true
+			return true
 		}
 		log.WithFields(log.Fields{
 			"method": m,
 		}).Trace("Did not match HTTP method")
 	}
 
-	return correctMethods
+	return false
 }
 
 func (c *RequestConditions) authorizedHeaders(req *http.Request) bool {

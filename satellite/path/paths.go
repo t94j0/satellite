@@ -79,24 +79,38 @@ func (paths *Paths) Len() int {
 // Match matches a page given a URI. It returns the specified Path and a boolean
 // value to determine if there was a page that matched the URI
 func (paths *Paths) Match(uri string) (*Path, bool) {
+	hostedFileFromPath := func(v *Path) (*Path, bool) {
+		if v.HostedFile != "" {
+			return v, true
+		}
+		if _, err := os.Stat(path.Join(paths.base, v.Path)); err == nil {
+			v.HostedFile = v.Path
+		} else {
+			v.HostedFile = uri
+		}
+		return v, true
+	}
+
+	// Prioritize direct matches over globs
+	for _, v := range paths.list {
+		if v.Path == uri {
+			return hostedFileFromPath(v)
+		}
+	}
+
+	// Secondarily accept globs. Path is indeterminate if multiple globs match
 	for _, v := range paths.list {
 		g := glob.MustCompile(v.Path, '/')
 		if g.Match(uri) {
-			if v.HostedFile != "" {
-				return v, true
-			}
-			if _, err := os.Stat(path.Join(paths.base, v.Path)); err != nil {
-				v.HostedFile = v.Path
-			} else {
-				v.HostedFile = uri
-			}
-			return v, true
+			return hostedFileFromPath(v)
 		}
 	}
+
 	info, err := os.Stat(path.Join(paths.base, uri))
 	if err == nil && !info.IsDir() {
 		return &Path{Path: uri, HostedFile: uri}, true
 	}
+
 	return nil, false
 }
 
@@ -222,6 +236,21 @@ func (paths *Paths) Serve(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
+func applyAllConditionals(uri string, paths *Paths, matchedPath *Path) error {
+	for _, path := range paths.list {
+		g := glob.MustCompile(path.Path, '/')
+		if g.Match(uri) {
+			newP, err := MergeRequestConditions(matchedPath.Conditions, path.Conditions)
+			if err != nil {
+				return err
+			}
+			matchedPath.Conditions = newP
+		}
+	}
+	paths.applyGlobalConditionals(matchedPath)
+	return nil
+}
+
 // MatchAndServe matches a path, determines if the path should be served, and serves the file based on an HTTP request. If a failure occurs, this function will serve failed pages.
 //
 // This is a helper function which combines already-exposed functions to make file serving easy.
@@ -235,7 +264,7 @@ func (paths *Paths) MatchAndServe(w http.ResponseWriter, req *http.Request) (boo
 		return false, nil
 	}
 
-	paths.applyGlobalConditionals(matchedPath)
+	applyAllConditionals(uri, paths, matchedPath)
 
 	shouldHost := matchedPath.ShouldHost(req, paths.state, paths.GeoipDB)
 	if shouldHost {

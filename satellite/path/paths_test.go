@@ -33,6 +33,11 @@ func (t TempDir) CreateFile(name, content string) {
 	ioutil.WriteFile(fullpath, []byte(content), 0666)
 }
 
+func (t TempDir) CreateDirectory(name string) {
+	fullpath := filepath.Join(t.Path, name)
+	os.Mkdir(fullpath, 0777)
+}
+
 func (t TempDir) CreateIndexFile() {
 	t.CreateFile("index.html", Sentinal)
 }
@@ -547,6 +552,172 @@ func TestPaths_MatchAndServe_file_noinfo(t *testing.T) {
 	}
 	if didMatch == false || w.Code != 200 || w.Body.String() != Sentinal {
 		t.Fail()
+	}
+}
+
+func TestPaths_MatchAndServe_glob_file(t *testing.T) {
+	// Create project directory
+	tmpdir, err := NewTempDir()
+	if err != nil {
+		t.Error(err)
+	}
+	defer tmpdir.Close()
+	tmpdir.CreateFile("first.html", Sentinal)
+	tmpdir.CreateFile("second.html", "lol")
+
+	pathList := `- path: /*.html
+  hosted_file: /first.html`
+
+	tmpdir.CreatePathList(pathList)
+
+	// Create paths object
+	paths, err := NewDefaultTest(tmpdir.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create HTTP request
+	req := httptest.NewRequest("GET", "/second.html", nil)
+	w := httptest.NewRecorder()
+
+	// Execute request
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+	if didMatch == false || w.Code != 200 || w.Body.String() != Sentinal {
+		t.Fail()
+	}
+}
+
+func buildTestEnv() (TempDir, error) {
+	tmpdir, err := NewTempDir()
+	if err != nil {
+		return TempDir{}, err
+	}
+	tmpdir.CreateDirectory("testdir1")
+	tmpdir.CreateFile("/testdir1/first.html", Sentinal)
+	tmpdir.CreateFile("/testdir1/second.html", Sentinal+"4")
+	tmpdir.CreateDirectory("testdir2")
+	tmpdir.CreateFile("/testdir2/first.html", Sentinal+"2")
+	tmpdir.CreateFile("/second.html", Sentinal+"3")
+
+	return tmpdir, nil
+}
+
+func TestPaths_MatchAndServe_glob_extensions_block(t *testing.T) {
+	tmpdir, err := buildTestEnv()
+	if err != nil {
+		t.Error(err)
+	}
+	defer tmpdir.Close()
+
+	pathList := `- path: /**.html
+  authorized_methods: [PUT]`
+	tmpdir.CreatePathList(pathList)
+
+	// Create paths object
+	paths, err := NewDefaultTest(tmpdir.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Make GET request to path that should only be PUT
+	req := httptest.NewRequest("GET", "/testdir1/first.html", nil)
+	w := httptest.NewRecorder()
+
+	// Execute request
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+	if didMatch {
+		t.Fatal("Request should not have matched due to glob block on GET")
+	}
+}
+
+func TestPaths_MatchAndServe_glob_extensions_block_multiple(t *testing.T) {
+	tmpdir, err := buildTestEnv()
+	if err != nil {
+		t.Error(err)
+	}
+	defer tmpdir.Close()
+
+	pathList := `- path: /**.html
+  authorized_methods: [PUT]
+- path: /testdir2/*.html
+  authorized_methods: [GET]`
+	tmpdir.CreatePathList(pathList)
+
+	// Create paths object
+	paths, err := NewDefaultTest(tmpdir.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Make GET request to path that should only be PUT
+	req := httptest.NewRequest("GET", "/testdir1/first.html", nil)
+	w := httptest.NewRecorder()
+
+	// Execute request
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+	if didMatch {
+		t.Fatal("GET request to /testdir1/first.html should not have matched")
+	}
+
+	// Make GET request to path that should only be PUT
+	req2 := httptest.NewRequest("GET", "/testdir2/first.html", nil)
+	w2 := httptest.NewRecorder()
+
+	// Execute request
+	didMatch2, err := paths.MatchAndServe(w2, req2)
+	if err != nil {
+		t.Error(err)
+	}
+	if !didMatch2 {
+		t.Fatal("GET request to /testdir2/second.html should have matched")
+	}
+}
+
+func TestPaths_MatchAndServe_jlob_directory(t *testing.T) {
+	// Create project directory
+	tmpdir, err := buildTestEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tmpdir.Close()
+
+	pathList := `- path: /testdir1/*
+  hosted_file: /testdir1/first.html`
+
+	tmpdir.CreatePathList(pathList)
+
+	// Create paths object
+	paths, err := NewDefaultTest(tmpdir.Path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create HTTP request
+	req := httptest.NewRequest("GET", "/testdir1/second.html", nil)
+	w := httptest.NewRecorder()
+
+	// Execute request
+	didMatch, err := paths.MatchAndServe(w, req)
+	if err != nil {
+		t.Error(err)
+	}
+	if !didMatch {
+		t.Error("Request should have matched:", didMatch)
+	}
+	if w.Code != 200 {
+		t.Error("Request should have been 200:", w.Code)
+	}
+	if w.Body.String() != Sentinal {
+		t.Error("/testdir1/second.html should have returned", Sentinal, "but returned", w.Body.String())
 	}
 }
 
