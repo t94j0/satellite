@@ -168,30 +168,6 @@ func (paths *Paths) collectConditionalsDirectory(targetPath string) (RequestCond
 	return mergedConds, nil
 }
 
-func (paths *Paths) applyGlobalConditionals(p *Path) error {
-	gcp := paths.globalConditionsPath
-	if gcp == "" {
-		return nil
-	}
-
-	if f, err := os.Stat(gcp); err != nil || !f.IsDir() {
-		return nil
-	}
-
-	globalConditions, err := paths.collectConditionalsDirectory(gcp)
-	if err != nil {
-		return err
-	}
-
-	newP, err := MergeRequestConditions(globalConditions, p.Conditions)
-	if err != nil {
-		return err
-	}
-	p.Conditions = newP
-
-	return nil
-}
-
 func (paths *Paths) validate(pathList []*Path) error {
 	for _, v := range pathList {
 		// Ensure all path URI globbing compiles
@@ -236,19 +212,51 @@ func (paths *Paths) Serve(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-func applyAllConditionals(uri string, paths *Paths, matchedPath *Path) error {
+func getAllConditionals(uri string, paths *Paths, matchedPath *Path) (RequestConditions, error) {
+	target := matchedPath.Conditions
+	globalConditions, err := paths.getGlobalConditionals()
+	if err != nil {
+		return target, err
+	}
+
+	matchingConditions, err := paths.getMatchingConditionals(uri)
+	if err != nil {
+		return RequestConditions{}, err
+	}
+
+	return MergeRequestConditions(globalConditions, matchingConditions, target)
+}
+
+// getMatchingConditionals gets all conditions that apply to `uri` (since some paths can be globbed) and apply them to matchedPath.Conditions
+func (paths *Paths) getMatchingConditionals(uri string) (RequestConditions, error) {
+	conditions := make([]RequestConditions, 0)
 	for _, path := range paths.list {
 		g := glob.MustCompile(path.Path, '/')
 		if g.Match(uri) {
-			newP, err := MergeRequestConditions(matchedPath.Conditions, path.Conditions)
-			if err != nil {
-				return err
-			}
-			matchedPath.Conditions = newP
+			conditions = append(conditions, path.Conditions)
 		}
 	}
-	paths.applyGlobalConditionals(matchedPath)
-	return nil
+	return MergeRequestConditions(conditions...)
+}
+
+// getGlobalConditionals gets all conditions from the paths.globalConditionsPath
+func (paths *Paths) getGlobalConditionals() (RequestConditions, error) {
+	var empty RequestConditions
+	gcp := paths.globalConditionsPath
+	if gcp == "" {
+		return empty, nil
+	}
+
+	if f, err := os.Stat(gcp); err != nil || !f.IsDir() {
+		return empty, nil
+	}
+
+	globalConditions, err := paths.collectConditionalsDirectory(gcp)
+	if err != nil {
+		return empty, err
+	}
+
+	return globalConditions, nil
 }
 
 // MatchAndServe matches a path, determines if the path should be served, and serves the file based on an HTTP request. If a failure occurs, this function will serve failed pages.
@@ -264,10 +272,13 @@ func (paths *Paths) MatchAndServe(w http.ResponseWriter, req *http.Request) (boo
 		return false, nil
 	}
 
-	applyAllConditionals(uri, paths, matchedPath)
+	conditions, err := getAllConditionals(uri, paths, matchedPath)
+	if err != nil {
+		return false, err
+	}
 
-	shouldHost := matchedPath.ShouldHost(req, paths.state, paths.GeoipDB)
-	if shouldHost {
+	if conditions.ShouldHost(req, paths.state, paths.GeoipDB) {
+		paths.state.Hit(req)
 		if err := matchedPath.ServeHTTP(w, req, paths.base); err != nil {
 			return false, err
 		}
